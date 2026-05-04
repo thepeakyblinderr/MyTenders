@@ -4229,10 +4229,10 @@ function syncMTEntries(activeList) {
   activeList.forEach(function(t) {
     const ttId = 'mt_' + t._fbId;
 
-    // Build a short but recognisable label: prefer Enivida no, then last 6 of tender no, then name prefix
+    // Build label: prefer last 3 of tender no, then enivida no, then name prefix
     const enivida = (t.enividaNumber || '').trim();
     const tNo     = (t.tenderNumber  || '').trim();
-    const label   = enivida || (tNo ? tNo.slice(-3) : '') || (t.nameOfWork || '').slice(0, 10) || '?';
+    const label   = (tNo ? tNo.slice(-3) : '') || enivida || (t.nameOfWork || '').slice(0, 10) || '?';
 
     const notes = [t.department, t.tenderMode, t.tenderType,
                    t.valueInclGST ? '₹'+Number(t.valueInclGST).toLocaleString('en-IN') : '']
