@@ -1612,11 +1612,43 @@ function showImportModal() {
         </div>
         <div class="sec-label" style="margin-bottom:10px;">Preview (first 5 rows)</div>
         <div id="import-preview-wrap"></div>
+        <div id="import-dup-warn"></div>
     `;
     document.getElementById('import-confirm-btn').textContent = `Import ${importData.length} Records`;
     document.getElementById('import-confirm-btn').disabled = false;
     updateImportPreview();
     show('import-bg');
+}
+
+// Duplicate check: same Tender No + WO No = duplicate (allows split tenders with different WO)
+// Falls back to: same Tender No + Vendor Name, then Tender No alone, then Enivida No + WO No
+function checkDuplicate(rec) {
+    const tn = String(rec.tenderNumber  || '').trim().toLowerCase();
+    const wo = String(rec.woNumber      || '').trim().toLowerCase();
+    const en = String(rec.enividaNumber || '').trim().toLowerCase();
+    const vn = String(rec.vendorName    || '').trim().toLowerCase();
+
+    return tenders.find(t => {
+        const tTn = String(t.tenderNumber  || '').trim().toLowerCase();
+        const tWo = String(t.woNumber      || '').trim().toLowerCase();
+        const tEn = String(t.enividaNumber || '').trim().toLowerCase();
+        const tVn = String(t.vendorName    || '').trim().toLowerCase();
+
+        if (tn && wo  && tTn === tn && tWo === wo)                 return true; // TN + WO match
+        if (en && wo  && tEn === en && tWo === wo)                 return true; // EN + WO match
+        if (tn && !wo && !tWo && vn  && tTn === tn && tVn === vn)  return true; // TN + Vendor (no WO)
+        if (tn && !wo && !tWo && !vn && !tVn && tTn === tn)        return true; // TN alone (no WO, no vendor)
+        return false;
+    }) || null;
+}
+
+function getImportRecords() {
+    const mappedCols = Object.entries(importMapping).filter(([, v]) => v);
+    return importData.map(row => {
+        const rec = {};
+        mappedCols.forEach(([col, key]) => { rec[key] = row[importHeaders.indexOf(col)]; });
+        return rec;
+    });
 }
 
 function updateImportPreview() {
@@ -1626,6 +1658,31 @@ function updateImportPreview() {
         wrap.innerHTML = '<p style="color:var(--text-sub);font-size:13px;padding:8px 0;">No columns mapped yet.</p>';
         return;
     }
+
+    // Duplicate scan
+    const records  = getImportRecords();
+    const dupCount = records.filter(r => checkDuplicate(r)).length;
+    const dupWarn  = document.getElementById('import-dup-warn');
+    if (dupCount > 0) {
+        dupWarn.innerHTML = `
+            <div style="margin-top:14px;padding:11px 14px;background:#fef7e0;border:1px solid #f9ab00;border-radius:8px;font-size:13px;">
+                ⚠️ <strong>${dupCount} duplicate${dupCount>1?'s':''} detected</strong>
+                — matched by Tender No + WO No (split tenders with different WO are <em>not</em> flagged).
+                <br><label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;">
+                    <input type="checkbox" id="skip-dups-chk" checked style="width:15px;height:15px;">
+                    <span>Skip duplicates during import</span>
+                </label>
+            </div>`;
+    } else {
+        dupWarn.innerHTML = dupCount === 0 && tenders.length > 0
+            ? `<div style="margin-top:10px;font-size:12px;color:#34a853;">✓ No duplicates found against your ${tenders.length} existing records.</div>`
+            : '';
+    }
+
+    const newCount = dupCount > 0 ? importData.length - dupCount : importData.length;
+    document.getElementById('import-confirm-btn').textContent =
+        dupCount > 0 ? `Import ${newCount} New + ${dupCount} Dup` : `Import ${importData.length} Records`;
+
     const heads    = mapped.map(([, key]) => IMPORT_FIELDS.find(f => f.key === key)?.label || key);
     const preview  = importData.slice(0, 5).map(row =>
         mapped.map(([col]) => {
@@ -1689,6 +1746,8 @@ async function confirmImport() {
         return;
     }
 
+    const skipDups = document.getElementById('skip-dups-chk')?.checked ?? true;
+
     const btn = document.getElementById('import-confirm-btn');
     btn.disabled = true; btn.textContent = 'Importing…';
     document.getElementById('import-foot').querySelector('.btn-outline').disabled = true;
@@ -1700,7 +1759,7 @@ async function confirmImport() {
         </div>
     `);
 
-    let success = 0, skipped = 0;
+    let success = 0, skipped = 0, dupsSkipped = 0;
     for (let i = 0; i < importData.length; i++) {
         const row = importData[i];
         const rec = {};
@@ -1711,6 +1770,8 @@ async function confirmImport() {
 
         const name = String(rec.nameOfWork || '').trim();
         if (!name) { skipped++; continue; }
+
+        if (skipDups && checkDuplicate(rec)) { dupsSkipped++; continue; }
 
         const allotDate  = parseImportDate(rec.allotmentDate);
         const resultDate = parseImportDate(rec.resultDate);
@@ -1761,7 +1822,10 @@ async function confirmImport() {
     rebuildFilters();
     applyFilters();
     closeImport();
-    toast(`Imported ${success} tenders${skipped ? `, ${skipped} skipped` : ''} ✓`);
+    const parts = [`Imported ${success} tenders`];
+    if (dupsSkipped) parts.push(`${dupsSkipped} duplicates skipped`);
+    if (skipped)     parts.push(`${skipped} blank rows skipped`);
+    toast(parts.join(', ') + ' ✓');
 }
 
 function closeImport() {
