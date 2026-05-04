@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyTenders</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --bg: #f1f3f4;
+            --text: #202124;
+            --text-sub: #5f6368;
+            --border: #dadce0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── SETUP SCREEN ── */
+        #setup-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f1f3f4 100%);
+        }
+
+        .setup-card {
+            background: white;
+            border-radius: 16px;
+            padding: 48px 40px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            width: 460px;
+            max-width: 95vw;
+        }
+
+        .setup-card .icon { font-size: 44px; margin-bottom: 10px; }
+        .setup-card h1 { font-size: 24px; color: var(--primary); margin-bottom: 6px; }
+        .setup-card .sub { color: var(--text-sub); font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
+
+        .setup-steps {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: var(--text-sub);
+            line-height: 1.9;
+        }
+
+        .setup-steps strong { color: var(--text); }
+
+        .setup-input-wrap { display: flex; flex-direction: column; gap: 8px; }
+        .setup-input-wrap label { font-size: 13px; font-weight: 600; color: var(--text-sub); }
+        .setup-input-wrap input {
+            padding: 11px 13px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .setup-input-wrap input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,115,232,0.15); }
+        .setup-input-wrap input::placeholder { font-family: inherit; color: #bbb; }
+
+        .setup-hint { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+
+        /* ── HEADER ── */
+        header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 22px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        header h1 { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        /* ── MAIN ── */
+        main { max-width: 1480px; margin: 0 auto; padding: 22px 18px; }
+
+        /* ── DASHBOARD ── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 13px;
+            margin-bottom: 10px;
+        }
+        .dashboard2 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 13px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 16px 18px;
+            box-shadow: var(--shadow);
+            border-top: 3px solid transparent;
+            transition: box-shadow 0.2s;
+        }
+        .stat-card:hover { box-shadow: var(--shadow-md); }
+
+        .stat-card.s-total     { border-color: #9e9e9e; }
+        .stat-card.s-progress  { border-color: #1a73e8; }
+        .stat-card.s-awarded   { border-color: #34a853; }
+        .stat-card.s-hold      { border-color: #f9ab00; }
+        .stat-card.s-cancelled { border-color: #ea4335; }
+        .stat-card.s-arc       { border-color: #8e24aa; }
+        .stat-card.s-onetime   { border-color: #00897b; }
+        .stat-card.s-shutdown  { border-color: #e53935; }
+        .stat-card.s-af        { border-color: #1e88e5; }
+
+        .stat-card .num { font-size: 36px; font-weight: 700; line-height: 1.1; }
+        .stat-card.s-total     .num { color: #757575; }
+        .stat-card.s-progress  .num { color: #1a73e8; }
+        .stat-card.s-awarded   .num { color: #34a853; }
+        .stat-card.s-hold      .num { color: #f9ab00; }
+        .stat-card.s-cancelled .num { color: #ea4335; }
+        .stat-card.s-arc       .num { color: #8e24aa; }
+        .stat-card.s-onetime   .num { color: #00897b; }
+        .stat-card.s-shutdown  .num { color: #e53935; }
+        .stat-card.s-af        .num { color: #1e88e5; }
+
+        .stat-card .lbl {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-sub);
+            margin-top: 4px;
+        }
+        .stat-card .sub-cost {
+            font-size: 12px;
+            font-weight: 600;
+            color: #34a853;
+            margin-top: 3px;
+        }
+
+        /* ── TOOLBAR ── */
+        .toolbar {
+            display: flex;
+            gap: 9px;
+            margin-bottom: 13px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-wrap { flex: 1; min-width: 200px; position: relative; }
+        .search-wrap svg {
+            position: absolute; left: 10px; top: 50%;
+            transform: translateY(-50%); color: var(--text-sub); pointer-events: none;
+        }
+        .search-wrap input { width: 100%; padding: 8px 12px 8px 33px; }
+
+        input, select, textarea {
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            font-size: 13.5px;
+            font-family: inherit;
+            color: var(--text);
+            background: white;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
+        }
+
+        select.filter { padding: 8px 10px; cursor: pointer; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            padding: 8px 17px;
+            border-radius: 7px;
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-primary:disabled { background: #9dc0f5; cursor: not-allowed; }
+        .btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-outline:hover { background: #e8f0fe; }
+        .btn-danger { background: #ea4335; color: white; }
+        .btn-danger:hover { background: #c62828; }
+
+        /* ── TABLE ── */
+        .table-wrap {
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead { background: #f8f9fa; }
+        thead tr { border-bottom: 2px solid var(--border); }
+        th {
+            padding: 9px 12px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-sub);
+            white-space: nowrap;
+        }
+        td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #f1f3f4;
+            vertical-align: middle;
+        }
+        tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: #fafbfc; }
+
+        /* stacked cell helpers */
+        .cell-main  { font-weight: 600; font-size: 13px; color: var(--text); line-height: 1.3; }
+        .cell-sub   { font-size: 11px; color: var(--text-sub); margin-top: 2px; line-height: 1.4; }
+        .cell-dim   { color: #c5cae9; }   /* "—" placeholder */
+
+        .work-name { font-weight: 600; }
+        .tag {
+            display: inline-block; font-size: 10px; font-weight: 700;
+            border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle;
+        }
+        .tag-shutdown { background: #fce8e6; color: #c5221f; }
+        .tag-af       { background: #e8f0fe; color: #1557b0; }
+        .tag-split    { background: #f3e8fd; color: #7b1fa2; }
+
+        .badge {
+            display: inline-block; padding: 3px 9px; white-space: nowrap;
+            border-radius: 20px; font-size: 11px; font-weight: 600;
+        }
+        .b-progress  { background: #e8f0fe; color: #1557b0; }
+        .b-awarded   { background: #e6f4ea; color: #137333; }
+        .b-hold      { background: #fef7e0; color: #b45309; }
+        .b-cancelled { background: #fce8e6; color: #c5221f; }
+
+        .lead-pill {
+            display: inline-block; padding: 2px 7px; border-radius: 20px;
+            font-size: 11px; font-weight: 700; margin-top: 4px;
+        }
+        .lead-ok     { background: #e6f4ea; color: #137333; }
+        .lead-warn   { background: #fef7e0; color: #b45309; }
+        .lead-alert  { background: #fce8e6; color: #c5221f; }
+        .lead-frozen { background: #f1f3f4; color: var(--text-sub); }
+
+        .remarks-cell { max-width: 180px; font-size: 12px; color: var(--text-sub); }
+        .remarks-short {
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; cursor: pointer; line-height: 1.5;
+        }
+        .remarks-short:hover { color: var(--primary); }
+
+        /* Remarks popover */
+        #remarks-popover {
+            position: fixed; z-index: 400;
+            background: white; border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+            max-width: 320px; width: max-content;
+            font-size: 13px; color: var(--text); line-height: 1.6;
+            white-space: pre-wrap; word-break: break-word;
+            display: none;
+        }
+        #remarks-popover.show { display: block; }
+
+        .fy-chip {
+            font-size: 11px; background: #f1f3f4; color: var(--text-sub);
+            padding: 2px 7px; border-radius: 4px; font-weight: 500; white-space: nowrap;
+        }
+
+        .fin-row { font-size: 12px; color: var(--text-sub); line-height: 1.8; }
+        .fin-row span { color: var(--text); font-weight: 500; }
+        .fin-landed { font-size: 12px; font-weight: 700; color: #137333; margin-top: 1px; }
+
+        .tbl-actions { display: flex; gap: 5px; }
+        .btn-sm {
+            padding: 4px 10px; border-radius: 5px; font-size: 12px;
+            font-weight: 500; border: none; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-edit { background: #e8f0fe; color: #1a73e8; }
+        .btn-edit:hover { background: #d2e3fc; }
+        .btn-del  { background: #fce8e6; color: #c5221f; }
+        .btn-del:hover  { background: #f5c6c2; }
+
+        .empty-state {
+            text-align: center; padding: 60px 24px; color: var(--text-sub);
+        }
+        .empty-state .icon { font-size: 44px; margin-bottom: 12px; }
+        .empty-state h3 { color: var(--text); margin-bottom: 6px; }
+
+        .status-bar {
+            text-align: center; padding: 32px; color: var(--text-sub);
+        }
+
+        /* ── MODAL ── */
+        .backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 200;
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+        }
+
+        .modal {
+            background: white; border-radius: 12px;
+            width: 100%; max-width: 820px; max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column;
+        }
+
+        .modal-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 22px 26px 0; flex-shrink: 0;
+        }
+        .modal-head h2 { font-size: 18px; }
+        .modal-close {
+            background: none; border: none; font-size: 26px; line-height: 1;
+            cursor: pointer; color: var(--text-sub); padding: 2px 6px; border-radius: 4px;
+        }
+        .modal-close:hover { background: #f1f3f4; }
+
+        .modal-body { padding: 18px 26px; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .full { grid-column: 1 / -1; }
+
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field label {
+            font-size: 11px; font-weight: 700; color: var(--text-sub);
+            text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        .field input, .field select, .field textarea { padding: 9px 11px; }
+        .field textarea { resize: vertical; min-height: 68px; }
+
+        .lead-display {
+            padding: 9px 11px; background: #f8f9fa;
+            border: 1px solid var(--border); border-radius: 7px;
+            font-size: 14px; font-weight: 600; color: var(--primary);
+        }
+
+        .sec-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--text-sub);
+            padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            grid-column: 1 / -1; margin-top: 4px;
+        }
+
+        .modal-foot {
+            padding: 14px 26px; border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
+        }
+
+        /* ── EXPANDED STATS ── */
+        .stats-expand-btn {
+            display: flex; align-items: center; gap: 6px;
+            background: white; border: 1px solid var(--border);
+            border-radius: 7px; padding: 6px 14px;
+            font-size: 12px; font-weight: 600; color: var(--text-sub);
+            cursor: pointer; margin-bottom: 14px; transition: all 0.15s;
+        }
+        .stats-expand-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .stats-expand-btn .arrow { transition: transform 0.2s; font-size: 10px; }
+        .stats-expand-btn.open .arrow { transform: rotate(180deg); }
+
+        #stats-extra { display: none; margin-bottom: 16px; }
+        #stats-extra.open { display: block; }
+
+        .dashboard3 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 13px;
+            margin-bottom: 13px;
+        }
+        .stat-card.s-gem      { border-color: #0288d1; }
+        .stat-card.s-etender  { border-color: #7b1fa2; }
+        .stat-card.s-physical { border-color: #558b2f; }
+        .stat-card.s-leadavg  { border-color: #f57c00; }
+        .stat-card.s-gem      .num { color: #0288d1; }
+        .stat-card.s-etender  .num { color: #7b1fa2; }
+        .stat-card.s-physical .num { color: #558b2f; }
+        .stat-card.s-leadavg  .num { color: #f57c00; }
+
+        .dept-table {
+            background: white; border-radius: 10px;
+            box-shadow: var(--shadow); overflow: hidden;
+        }
+        .dept-table-head {
+            padding: 10px 16px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-sub); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between;
+        }
+        .dept-table-row {
+            display: flex; align-items: center; padding: 8px 16px;
+            border-bottom: 1px solid #f1f3f4; font-size: 13px;
+        }
+        .dept-table-row:last-child { border-bottom: none; }
+        .dept-bar-wrap { flex: 1; margin: 0 12px; height: 6px; background: #f1f3f4; border-radius: 3px; overflow: hidden; }
+        .dept-bar { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+        .dept-count { font-weight: 700; color: var(--primary); font-size: 13px; min-width: 24px; text-align: right; }
+
+        /* ── CONFIRM ── */
+        .confirm-modal {
+            background: white; border-radius: 12px; padding: 32px;
+            max-width: 380px; width: 100%; text-align: center;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+        }
+        .confirm-modal .icon { font-size: 42px; margin-bottom: 12px; }
+        .confirm-modal h2 { margin-bottom: 8px; }
+        .confirm-modal p { color: var(--text-sub); font-size: 14px; margin-bottom: 22px; }
+        .confirm-modal .actions { display: flex; gap: 10px; justify-content: center; }
+
+        /* ── TOAST ── */
+        #toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: #323232; color: white; padding: 10px 20px;
+            border-radius: 8px; font-size: 14px; z-index: 999;
+            opacity: 0; transition: opacity 0.25s; pointer-events: none;
+        }
+        #toast.show { opacity: 1; }
+
+        /* ── UTILS ── */
+        .hidden { display: none !important; }
+
+        @media (max-width: 960px) { .dashboard { grid-template-columns: repeat(3,1fr); } }
+        @media (max-width: 600px) {
+            .dashboard { grid-template-columns: repeat(2,1fr); }
+            .form-grid { grid-template-columns: 1fr; }
+            .full { grid-column: 1; }
+            .sec-label { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══ SETUP SCREEN ═══ -->
+<div id="setup-screen" class="hidden">
+    <div class="setup-card">
+        <div class="icon">📋</div>
+        <h1>MyTenders Setup</h1>
+        <p class="sub">Connect your Firebase Realtime Database to store and sync your tender data across any device.</p>
+
+        <div class="setup-steps">
+            <strong>One-time Firebase setup:</strong><br>
+            1. Go to <strong>console.firebase.google.com</strong><br>
+            2. Create a project → <strong>Realtime Database</strong> → Create database<br>
+            3. In <strong>Rules</strong> tab, set <code>".read": true, ".write": true</code> → Publish<br>
+            4. Copy the Database URL and paste below
+        </div>
+
+        <div class="setup-input-wrap">
+            <label>Firebase Realtime Database URL</label>
+            <input type="url" id="db-url-input"
+                placeholder="https://your-project-default-rtdb.firebaseio.com">
+            <span class="setup-hint">This is saved in your browser — you only enter it once.</span>
+        </div>
+
+        <br>
+        <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="connectDB()">
+            Connect &amp; Open App →
+        </button>
+    </div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="app" class="hidden">
+
+    <header>
+        <h1>📋 MyTenders</h1>
+        <div class="header-right">
+            <span id="sync-status" style="font-size:12px;color:var(--text-sub);"></span>
+            <a href="TenderTrack.html" class="btn btn-outline" style="font-size:12px;padding:6px 13px;text-decoration:none;">📊 Pipeline</a>
+            <button class="btn btn-outline" style="font-size:12px;padding:6px 13px;" onclick="changeDB()">Change DB</button>
+            <button class="btn btn-primary" onclick="openAdd()">+ Add Tender</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Dashboard Row 1 -->
+        <div class="dashboard">
+            <div class="stat-card s-total">
+                <div class="num" id="c-total">0</div>
+                <div class="lbl">Total</div>
+            </div>
+            <div class="stat-card s-progress">
+                <div class="num" id="c-progress">0</div>
+                <div class="lbl">In Progress</div>
+            </div>
+            <div class="stat-card s-awarded">
+                <div class="num" id="c-awarded">0</div>
+                <div class="lbl">Awarded</div>
+                <div class="sub-cost" id="c-awarded-cost"></div>
+            </div>
+            <div class="stat-card s-cancelled">
+                <div class="num" id="c-cancelled">0</div>
+                <div class="lbl">Cancelled</div>
+            </div>
+        </div>
+        <!-- Dashboard Row 2 -->
+        <div class="dashboard2">
+            <div class="stat-card s-arc">
+                <div class="num" id="c-arc">0</div>
+                <div class="lbl">ARC</div>
+                <div class="sub-cost" id="c-arc-cost"></div>
+            </div>
+            <div class="stat-card s-onetime">
+                <div class="num" id="c-onetime">0</div>
+                <div class="lbl">One-Time</div>
+                <div class="sub-cost" id="c-onetime-cost"></div>
+            </div>
+            <div class="stat-card s-shutdown">
+                <div class="num" id="c-shutdown">0</div>
+                <div class="lbl">Shutdown Jobs</div>
+                <div class="sub-cost" id="c-shutdown-cost"></div>
+            </div>
+            <div class="stat-card s-af">
+                <div class="num" id="c-af">0</div>
+                <div class="lbl">AF Jobs</div>
+                <div class="sub-cost" id="c-af-cost"></div>
+            </div>
+        </div>
+
+        <!-- Expand button -->
+        <button class="stats-expand-btn" id="stats-toggle-btn" onclick="toggleStats()">
+            <span class="arrow">▼</span> More Stats
+        </button>
+
+        <!-- Expandable stats section -->
+        <div id="stats-extra">
+            <!-- Row 3: Mode counts + Avg Lead Days -->
+            <div class="dashboard3">
+                <div class="stat-card s-gem">
+                    <div class="num" id="c-gem">0</div>
+                    <div class="lbl">GEM</div>
+                </div>
+                <div class="stat-card s-etender">
+                    <div class="num" id="c-etender">0</div>
+                    <div class="lbl">E-Tender</div>
+                </div>
+                <div class="stat-card s-physical">
+                    <div class="num" id="c-physical">0</div>
+                    <div class="lbl">Physical</div>
+                </div>
+                <div class="stat-card s-leadavg">
+                    <div class="num" id="c-leadavg">—</div>
+                    <div class="lbl">Avg Lead Days (Awarded)</div>
+                </div>
+            </div>
+            <!-- Row 4: Department breakdown -->
+            <div class="dept-table">
+                <div class="dept-table-head">
+                    <span>Top Departments</span><span>Count</span>
+                </div>
+                <div id="dept-rows"></div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-wrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="search-input" placeholder="Search any field…" oninput="applyFilters()">
+            </div>
+            <select class="filter" id="f-status" onchange="applyFilters()">
+                <option value="">All Status</option>
+                <option>In Progress</option>
+                <option>Awarded</option>
+                <option>Cancelled</option>
+            </select>
+            <select class="filter" id="f-fy" onchange="applyFilters()">
+                <option value="">All FY</option>
+            </select>
+            <select class="filter" id="f-mode" onchange="applyFilters()">
+                <option value="">All Modes</option>
+                <option>GEM</option>
+                <option>E-Tender</option>
+                <option>Physical</option>
+            </select>
+            <select class="filter" id="f-dept" onchange="applyFilters()">
+                <option value="">All Departments</option>
+            </select>
+            <button class="btn btn-outline" onclick="clearFilters()">✕ Clear</button>
+            <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+            <div id="tbl-status" class="status-bar">Connecting…</div>
+
+            <div id="tbl-empty" class="empty-state hidden">
+                <div class="icon">📂</div>
+                <h3>No tenders found</h3>
+                <p>Add your first tender or adjust the filters.</p>
+            </div>
+
+            <div id="tbl-scroll" class="hidden" style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name of Work</th>
+                            <th>Department</th>
+                            <th>Mode / Type</th>
+                            <th>Classification</th>
+                            <th>Status</th>
+                            <th>Allotment / Lead</th>
+                            <th>Financials</th>
+                            <th>FY / Handler</th>
+                            <th>Remarks</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbl-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ═══ ADD / EDIT MODAL ═══ -->
+<div id="modal-bg" class="backdrop hidden" onclick="bgClick(event)">
+    <div class="modal">
+        <div class="modal-head">
+            <h2 id="modal-title">Add Tender</h2>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+
+                <div class="sec-label">Work Details</div>
+
+                <div class="field full">
+                    <label>Name of Work *</label>
+                    <input type="text" id="m-name" placeholder="Full description of work / project">
+                </div>
+                <div class="field">
+                    <label>Enivida Number</label>
+                    <input type="text" id="m-enivida" placeholder="Internal reference no.">
+                </div>
+                <div class="field">
+                    <label>Tender Number</label>
+                    <input type="text" id="m-tender-no" placeholder="Official tender number">
+                </div>
+                <div class="field">
+                    <label>Department</label>
+                    <select id="m-dept" onchange="toggleOtherDept()">
+                        <option value="">— Select —</option>
+                        <option>Civil</option>
+                        <option>Core Group</option>
+                        <option>Contracts</option>
+                        <option>Corp Communication</option>
+                        <option>Electrical</option>
+                        <option>ES</option>
+                        <option>F&amp;S</option>
+                        <option>HSE</option>
+                        <option>IS</option>
+                        <option>Inspection</option>
+                        <option>Instrumentation</option>
+                        <option>Marketing</option>
+                        <option>Mechanical</option>
+                        <option>Medical</option>
+                        <option>Production</option>
+                        <option>Projects</option>
+                        <option>QC</option>
+                        <option>TS</option>
+                        <option>L&amp;D</option>
+                        <option>P&amp;U</option>
+                        <option>HR</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="field" id="other-dept-wrap" style="display:none;">
+                    <label>Specify Department</label>
+                    <input type="text" id="m-dept-other" placeholder="Enter department name…">
+                </div>
+                <div class="field">
+                    <label>File Handler</label>
+                    <input type="text" id="m-handler" placeholder="Person managing this file">
+                </div>
+
+                <div class="sec-label">Classification</div>
+
+                <div class="field">
+                    <label>Tender Mode</label>
+                    <select id="m-mode">
+                        <option>GEM</option>
+                        <option>E-Tender</option>
+                        <option>Physical</option>
+                    </select>
+                </div>
+                <div class="field full">
+                    <label>Tender Type</label>
+                    <select id="m-type">
+                        <option>Open Tender</option>
+                        <option>Limited Tender</option>
+                        <option>Physical Tender</option>
+                        <option>Global Tender</option>
+                        <option>Single Tender (Proprietary)</option>
+                        <option>Single Tender (Non-Proprietary) Others</option>
+                        <option>Single Tender (Non-Proprietary) PSU/Govt</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Price Type</label>
+                    <select id="m-price">
+                        <option>Normal</option>
+                        <option>Fixed+Variable</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Nature</label>
+                    <select id="m-nature">
+                        <option>ARC</option>
+                        <option>One-Time</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Shutdown Job</label>
+                    <select id="m-shutdown">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>AF Job</label>
+                    <select id="m-af">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Tender Split</label>
+                    <select id="m-split" onchange="toggleSplitCount()">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+                <div class="field" id="split-count-wrap" style="display:none;">
+                    <label>No. of Splits</label>
+                    <input type="number" id="m-split-count" placeholder="e.g. 2" min="1" step="1">
+                </div>
+
+                <div class="sec-label">Dates &amp; Timeline</div>
+
+                <div class="field">
+                    <label>Date of Allotment</label>
+                    <input type="date" id="m-allot" oninput="recalcLead()">
+                </div>
+                <div class="field">
+                    <label>Lead Days (from allotment to today)</label>
+                    <div class="lead-display" id="lead-disp">— days</div>
+                </div>
+                <div class="field">
+                    <label>Status</label>
+                    <select id="m-status" onchange="toggleResultDate()">
+                        <option>In Progress</option>
+                        <option>Awarded</option>
+                        <option>Cancelled</option>
+                    </select>
+                </div>
+                <div class="field" id="result-date-row" style="display:none;">
+                    <label id="result-date-lbl">Result Date</label>
+                    <input type="date" id="m-result-date">
+                </div>
+
+                <div class="sec-label">Financial</div>
+
+                <div class="field">
+                    <label>Estimate Value (incl. GST) ₹</label>
+                    <input type="number" id="m-val-incl" placeholder="0" min="0" step="1">
+                </div>
+                <div class="field">
+                    <label>Estimate Value (excl. GST) ₹</label>
+                    <input type="number" id="m-val-excl" placeholder="0" min="0" step="1">
+                </div>
+                <div class="field">
+                    <label>Final Landed Cost ₹</label>
+                    <input type="number" id="m-landed" placeholder="0" min="0" step="1">
+                </div>
+
+                <div class="sec-label">Notes</div>
+
+                <div class="field full">
+                    <label>Remarks / Notes</label>
+                    <textarea id="m-remarks" placeholder="Why on hold, competitor info, observations…"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="save-btn" onclick="saveTender()">Save Tender</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ DELETE CONFIRM ═══ -->
+<div id="confirm-bg" class="backdrop hidden">
+    <div class="confirm-modal">
+        <div class="icon">🗑️</div>
+        <h2>Delete Tender?</h2>
+        <p>This will permanently remove this record and cannot be undone.</p>
+        <div class="actions">
+            <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+            <button class="btn btn-danger" onclick="execDelete()">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="toast"></div>
+<div id="remarks-popover"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────
+let DB_URL       = '';
+let tenders      = [];   // [{id, ...data}]
+let filteredRows = [];   // currently visible rows (for export)
+let editId       = null;
+let delId        = null;
+
+// ── INIT ─────────────────────────────────────────────
+window.onload = () => {
+    DB_URL = localStorage.getItem('mytenders_db_url') || '';
+    if (DB_URL) {
+        show('app');
+        loadTenders();
+    } else {
+        show('setup-screen');
+    }
+};
+
+// ── SETUP ─────────────────────────────────────────────
+function connectDB() {
+    const val = document.getElementById('db-url-input').value.trim().replace(/\/$/, '');
+    if (!val || !val.startsWith('https://')) {
+        alert('Please enter a valid Firebase Realtime Database URL\n(starts with https://)');
+        return;
+    }
+    DB_URL = val;
+    localStorage.setItem('mytenders_db_url', DB_URL);
+    hide('setup-screen');
+    show('app');
+    loadTenders();
+}
+
+function changeDB() {
+    if (!confirm('Change database URL? You will be taken back to the setup screen.')) return;
+    localStorage.removeItem('mytenders_db_url');
+    location.reload();
+}
+
+// ── FIREBASE REST HELPERS ──────────────────────────────
+async function fbGet(path) {
+    const r = await fetch(`${DB_URL}/${path}.json`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+}
+
+async function fbPost(path, data) {
+    const r = await fetch(`${DB_URL}/${path}.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();   // returns { name: "-abc123" }
+}
+
+async function fbPatch(path, data) {
+    const r = await fetch(`${DB_URL}/${path}.json`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
+async function fbDelete(path) {
+    const r = await fetch(`${DB_URL}/${path}.json`, { method: 'DELETE' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
+// ── LOAD DATA ──────────────────────────────────────────
+async function loadTenders() {
+    setSyncStatus('Syncing…');
+    try {
+        const data = await fbGet('tenders');
+        tenders = data
+            ? Object.entries(data).map(([id, v]) => ({ id, ...v }))
+            : [];
+        tenders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        rebuildFilters();
+        applyFilters();
+        hide('tbl-status');
+        setSyncStatus('Synced ✓');
+    } catch (e) {
+        document.getElementById('tbl-status').textContent =
+            'Could not connect. Check your database URL. (' + e.message + ')';
+        show('tbl-status');
+        setSyncStatus('Error');
+    }
+}
+
+let syncTimer;
+function setSyncStatus(msg) {
+    document.getElementById('sync-status').textContent = msg;
+    clearTimeout(syncTimer);
+    if (msg === 'Synced ✓') syncTimer = setTimeout(() => setSyncStatus(''), 3000);
+}
+
+// ── UTILS ─────────────────────────────────────────────
+const show = id => document.getElementById(id).classList.remove('hidden');
+const hide = id => document.getElementById(id).classList.add('hidden');
+const get  = id => document.getElementById(id).value.trim();
+const set  = (id, v) => document.getElementById(id).value = v ?? '';
+
+// Parse YYYY-MM-DD as LOCAL date (avoids UTC midnight off-by-one in IST / other +ve zones)
+function parseLocalDate(s) {
+    if (!s) return null;
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function getFY(dateStr) {
+    if (!dateStr) return '';
+    const d = parseLocalDate(dateStr);
+    if (!d) return '';
+    const y = d.getFullYear(), m = d.getMonth();
+    return m >= 3 ? `${y}-${String(y+1).slice(2)}` : `${y-1}-${String(y).slice(2)}`;
+}
+
+// For awarded/cancelled tenders freeze lead days at the result date
+function calcLeadDays(allotDate, status, resultDate) {
+    if (!allotDate) return null;
+    const start = parseLocalDate(allotDate);
+    const end   = (['Awarded', 'Cancelled'].includes(status) && resultDate)
+        ? parseLocalDate(resultDate)
+        : new Date();
+    if (!start || !end) return null;
+    // Normalise end to midnight so partial-day doesn't round oddly
+    const endMid = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    return Math.round((endMid - start) / 86400000);
+}
+
+function fmtDate(s) {
+    if (!s) return '—';
+    const [y,m,d] = s.split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function fmtINR(v) {
+    if (v == null || v === '') return '—';
+    return '₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function statusBadge(s) {
+    const cls = { 'In Progress':'b-progress','Awarded':'b-awarded','On Hold':'b-hold','Cancelled':'b-cancelled' };
+    return `<span class="badge ${cls[s]||''}">${s||'—'}</span>`;
+}
+
+function esc(s) {
+    return String(s||'')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── FILTERS ────────────────────────────────────────────
+function rebuildFilters() {
+    const fys  = [...new Set(tenders.map(t=>t.financialYear).filter(Boolean))].sort().reverse();
+    const depts = [...new Set(tenders.map(t=>t.department).filter(Boolean))].sort();
+
+    const fyEl = document.getElementById('f-fy');
+    const curFY = fyEl.value;
+    fyEl.innerHTML = '<option value="">All FY</option>' + fys.map(v=>`<option>${esc(v)}</option>`).join('');
+    fyEl.value = curFY;
+
+    const dEl = document.getElementById('f-dept');
+    const curD = dEl.value;
+    dEl.innerHTML = '<option value="">All Departments</option>' + depts.map(v=>`<option>${esc(v)}</option>`).join('');
+    dEl.value = curD;
+}
+
+function applyFilters() {
+    const q    = get('search-input').toLowerCase();
+    const stat = document.getElementById('f-status').value;
+    const fy   = document.getElementById('f-fy').value;
+    const mode = document.getElementById('f-mode').value;
+    const dept = document.getElementById('f-dept').value;
+
+    const rows = tenders.filter(t => {
+        if (q && ![
+            t.nameOfWork, t.tenderNumber, t.enividaNumber, t.department,
+            t.fileHandler, t.tenderMode, t.tenderType, t.priceType,
+            t.nature, t.status, t.financialYear, t.remarks,
+            t.allotmentDate, t.resultDate, t.shutdownJob, t.afJob, t.tenderSplit,
+            t.splitCount != null ? String(t.splitCount) : '',
+            t.finalLandedCost != null ? String(t.finalLandedCost) : '',
+            t.valueInclGST != null ? String(t.valueInclGST) : '',
+            t.valueExclGST != null ? String(t.valueExclGST) : '',
+            t.leadDays     != null ? String(t.leadDays)     : ''
+        ].some(v => (v||'').toLowerCase().includes(q))) return false;
+        if (stat && t.status !== stat)       return false;
+        if (fy   && t.financialYear !== fy)  return false;
+        if (mode && t.tenderMode !== mode)   return false;
+        if (dept && t.department !== dept)   return false;
+        return true;
+    });
+
+    filteredRows = rows;
+    updateDashboard();
+    renderTable(rows);
+}
+
+function toggleStats() {
+    const btn = document.getElementById('stats-toggle-btn');
+    const sec = document.getElementById('stats-extra');
+    const open = sec.classList.toggle('open');
+    btn.classList.toggle('open', open);
+    btn.querySelector('.arrow').textContent = open ? '▲' : '▼';
+    btn.childNodes[1].textContent = (open ? ' Less Stats' : ' More Stats');
+}
+
+function fmtCr(v) {
+    if (!v) return '';
+    return '₹' + (v / 10000000).toFixed(2) + ' Cr';
+}
+
+function sumLanded(rows) {
+    return rows.reduce((s, t) => s + (parseFloat(t.finalLandedCost) || 0), 0);
+}
+
+function updateDashboard() {
+    const rows = filteredRows;
+
+    document.getElementById('c-total').textContent     = rows.length;
+    document.getElementById('c-progress').textContent  = rows.filter(t=>t.status==='In Progress').length;
+
+    const awarded = rows.filter(t=>t.status==='Awarded');
+    document.getElementById('c-awarded').textContent   = awarded.length;
+    const awardedCost = sumLanded(awarded);
+    document.getElementById('c-awarded-cost').textContent = awardedCost ? fmtCr(awardedCost) : '';
+
+    document.getElementById('c-cancelled').textContent = rows.filter(t=>t.status==='Cancelled').length;
+
+    const arcRows      = rows.filter(t=>t.nature==='ARC');
+    const onetimeRows  = rows.filter(t=>t.nature==='One-Time');
+    const shutdownRows = rows.filter(t=>t.shutdownJob==='Yes');
+    const afRows       = rows.filter(t=>t.afJob==='Yes');
+
+    document.getElementById('c-arc').textContent      = arcRows.length;
+    document.getElementById('c-onetime').textContent  = onetimeRows.length;
+    document.getElementById('c-shutdown').textContent = shutdownRows.length;
+    document.getElementById('c-af').textContent       = afRows.length;
+
+    const arcCost      = sumLanded(arcRows.filter(t=>t.status==='Awarded'));
+    const onetimeCost  = sumLanded(onetimeRows.filter(t=>t.status==='Awarded'));
+    const shutdownCost = sumLanded(shutdownRows.filter(t=>t.status==='Awarded'));
+    const afCost       = sumLanded(afRows.filter(t=>t.status==='Awarded'));
+
+    document.getElementById('c-arc-cost').textContent      = arcCost      ? fmtCr(arcCost)      : '';
+    document.getElementById('c-onetime-cost').textContent  = onetimeCost  ? fmtCr(onetimeCost)  : '';
+    document.getElementById('c-shutdown-cost').textContent = shutdownCost ? fmtCr(shutdownCost) : '';
+    document.getElementById('c-af-cost').textContent       = afCost       ? fmtCr(afCost)       : '';
+
+    // ── Mode counts
+    document.getElementById('c-gem').textContent      = rows.filter(t => t.tenderMode === 'GEM').length;
+    document.getElementById('c-etender').textContent  = rows.filter(t => t.tenderMode === 'E-Tender').length;
+    document.getElementById('c-physical').textContent = rows.filter(t => t.tenderMode === 'Physical').length;
+
+    // ── Avg lead days for awarded tenders
+    const awardedWithLead = awarded.filter(t => t.allotmentDate);
+    if (awardedWithLead.length) {
+        const avgLead = Math.round(
+            awardedWithLead.reduce((s, t) => s + calcLeadDays(t.allotmentDate, t.status, t.resultDate), 0)
+            / awardedWithLead.length
+        );
+        document.getElementById('c-leadavg').textContent = avgLead + 'd';
+    } else {
+        document.getElementById('c-leadavg').textContent = '—';
+    }
+
+    // ── Top 5 departments
+    const deptMap = {};
+    rows.forEach(t => { if (t.department) deptMap[t.department] = (deptMap[t.department] || 0) + 1; });
+    const sorted = Object.entries(deptMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxCount = sorted[0]?.[1] || 1;
+    document.getElementById('dept-rows').innerHTML = sorted.length
+        ? sorted.map(([dept, cnt]) => `
+            <div class="dept-table-row">
+                <span style="min-width:120px;font-weight:500;">${esc(dept)}</span>
+                <div class="dept-bar-wrap"><div class="dept-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div></div>
+                <span class="dept-count">${cnt}</span>
+            </div>`).join('')
+        : '<div style="padding:14px 16px;color:var(--text-sub);font-size:13px;">No data</div>';
+}
+
+// ── TABLE ──────────────────────────────────────────────
+function renderTable(rows) {
+    if (rows.length === 0) {
+        hide('tbl-scroll'); show('tbl-empty'); return;
+    }
+    hide('tbl-empty'); show('tbl-scroll');
+
+    document.getElementById('tbl-body').innerHTML = rows.map((t, i) => {
+        const lead = t.allotmentDate ? calcLeadDays(t.allotmentDate, t.status, t.resultDate) : null;
+        const frozen = ['Awarded','Cancelled'].includes(t.status) && t.resultDate;
+        const leadCls = frozen ? 'lead-frozen' : lead === null ? '' : lead <= 30 ? 'lead-ok' : lead <= 90 ? 'lead-warn' : 'lead-alert';
+        const leadHtml = lead !== null
+            ? `<div class="lead-pill ${leadCls}">${lead}d${frozen ? ' ✓' : ''}</div>`
+            : `<span class="cell-dim">—</span>`;
+
+        const dim = v => v || `<span class="cell-dim">—</span>`;
+
+        const finHtml = (t.valueInclGST || t.valueExclGST || t.finalLandedCost)
+            ? `<div class="fin-row">
+                ${t.valueInclGST ? `incl. <span>${fmtINR(t.valueInclGST)}</span><br>` : ''}
+                ${t.valueExclGST ? `excl. <span>${fmtINR(t.valueExclGST)}</span>` : ''}
+               </div>
+               ${t.finalLandedCost ? `<div class="fin-landed">⚑ ${fmtINR(t.finalLandedCost)}</div>` : ''}`
+            : `<span class="cell-dim">—</span>`;
+
+        return `<tr>
+            <td style="color:#c5c8cf;font-size:11px;width:32px;">${i+1}</td>
+            <td style="min-width:200px;max-width:280px;">
+                <div class="cell-main">${esc(t.nameOfWork)}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.afJob==='Yes'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?`<span class="tag tag-split">SPLIT${t.splitCount?'×'+t.splitCount:''}</span>`:''}</div>
+                ${t.enividaNumber||t.tenderNumber ? `<div class="cell-sub">${[t.enividaNumber,t.tenderNumber].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
+            </td>
+            <td style="white-space:nowrap;">${dim(esc(t.department))}</td>
+            <td style="min-width:110px;">
+                <div style="font-size:12px;font-weight:600;">${dim(esc(t.tenderMode))}</div>
+                ${t.tenderType ? `<div class="cell-sub">${esc(t.tenderType)}</div>` : ''}
+            </td>
+            <td style="white-space:nowrap;">
+                <div>${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : `<span class="cell-dim">—</span>`}</div>
+                ${t.priceType && t.priceType!=='Normal' ? `<div class="cell-sub" style="margin-top:3px;">${esc(t.priceType)}</div>` : ''}
+            </td>
+            <td style="white-space:nowrap;">${statusBadge(t.status)}</td>
+            <td style="white-space:nowrap;">
+                <div style="font-size:12px;">${t.allotmentDate ? fmtDate(t.allotmentDate) : `<span class="cell-dim">—</span>`}</div>
+                ${leadHtml}
+            </td>
+            <td style="min-width:140px;">${finHtml}</td>
+            <td style="white-space:nowrap;">
+                ${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : `<span class="cell-dim">—</span>`}
+                ${t.fileHandler ? `<div class="cell-sub" style="margin-top:4px;">${esc(t.fileHandler)}</div>` : ''}
+            </td>
+            <td class="remarks-cell">${t.remarks
+                ? `<div class="remarks-short" data-full="${esc(t.remarks)}" data-id="${t.id}" onclick="toggleRemark(this,event)" title="Click to read">${esc(t.remarks)}</div>`
+                : `<span class="cell-dim">—</span>`}</td>
+            <td>
+                <div class="tbl-actions">
+                    <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">Edit</button>
+                    <button class="btn-sm btn-del"  onclick="openDel('${t.id}')">Del</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ── MODAL ──────────────────────────────────────────────
+function openAdd() {
+    editId = null;
+    document.getElementById('modal-title').textContent = 'Add Tender';
+    resetForm();
+    show('modal-bg');
+}
+
+function openEdit(id) {
+    const t = tenders.find(x => x.id === id);
+    if (!t) return;
+    editId = id;
+    document.getElementById('modal-title').textContent = 'Edit Tender';
+    set('m-name',        t.nameOfWork);
+    set('m-enivida',     t.enividaNumber);
+    set('m-tender-no',   t.tenderNumber);
+    const knownDepts = ['Civil','Core Group','Contracts','Corp Communication','Electrical',
+        'ES','F&S','HSE','IS','Inspection','Instrumentation','Marketing','Mechanical',
+        'Medical','Production','Projects','QC','TS','L&D','P&U','HR','Other'];
+    if (knownDepts.includes(t.department)) {
+        set('m-dept', t.department);
+        document.getElementById('other-dept-wrap').style.display = 'none';
+    } else if (t.department) {
+        set('m-dept', 'Other');
+        set('m-dept-other', t.department);
+        document.getElementById('other-dept-wrap').style.display = '';
+    } else {
+        set('m-dept', '');
+        document.getElementById('other-dept-wrap').style.display = 'none';
+    }
+    set('m-handler',     t.fileHandler);
+    set('m-mode',        t.tenderMode);
+    set('m-type',        t.tenderType);
+    set('m-price',       t.priceType);
+    set('m-nature',      t.nature);
+    set('m-shutdown',    t.shutdownJob);
+    set('m-af',          t.afJob);
+    set('m-split',       t.tenderSplit);
+    set('m-split-count', t.splitCount ?? '');
+    document.getElementById('split-count-wrap').style.display = t.tenderSplit === 'Yes' ? '' : 'none';
+    set('m-allot',       t.allotmentDate);
+    set('m-status',      t.status);
+    set('m-result-date', t.resultDate);
+    set('m-val-incl',    t.valueInclGST ?? '');
+    set('m-val-excl',    t.valueExclGST ?? '');
+    set('m-landed',      t.finalLandedCost ?? '');
+    set('m-remarks',     t.remarks);
+    recalcLead();
+    toggleResultDate();
+    show('modal-bg');
+}
+
+function closeModal() { hide('modal-bg'); }
+function bgClick(e) { if (e.target.id === 'modal-bg') closeModal(); }
+
+function resetForm() {
+    ['m-name','m-enivida','m-tender-no','m-handler',
+     'm-allot','m-result-date','m-val-incl','m-val-excl','m-remarks',
+     'm-dept-other'].forEach(id => set(id, ''));
+    set('m-dept', '');
+    document.getElementById('other-dept-wrap').style.display = 'none';
+    set('m-mode',     'GEM');
+    set('m-type',     'Open Tender');
+    set('m-price',    'Normal');
+    set('m-nature',   'ARC');
+    set('m-shutdown', 'No');
+    set('m-af',       'No');
+    set('m-split',       'No');
+    set('m-split-count', '');
+    document.getElementById('split-count-wrap').style.display = 'none';
+    set('m-landed',   '');
+    set('m-status',   'In Progress');
+    document.getElementById('lead-disp').textContent = '— days';
+    document.getElementById('lead-disp').style.color = 'var(--primary)';
+    document.getElementById('result-date-row').style.display = 'none';
+}
+
+
+function recalcLead() {
+    const a = document.getElementById('m-allot').value;
+    const el = document.getElementById('lead-disp');
+    if (a) {
+        const diff = Math.round((new Date() - new Date(a)) / 86400000);
+        el.textContent = diff >= 0 ? `${diff} days` : 'Future date';
+        el.style.color  = diff >= 0 ? 'var(--primary)' : '#ea4335';
+    } else {
+        el.textContent = '— days';
+        el.style.color  = 'var(--primary)';
+    }
+}
+
+function toggleSplitCount() {
+    const v = document.getElementById('m-split').value;
+    document.getElementById('split-count-wrap').style.display = v === 'Yes' ? '' : 'none';
+    if (v !== 'Yes') document.getElementById('m-split-count').value = '';
+}
+
+function toggleOtherDept() {
+    const v = document.getElementById('m-dept').value;
+    document.getElementById('other-dept-wrap').style.display = v === 'Other' ? '' : 'none';
+    if (v !== 'Other') document.getElementById('m-dept-other').value = '';
+}
+
+function getDept() {
+    const v = document.getElementById('m-dept').value;
+    if (v === 'Other') return document.getElementById('m-dept-other').value.trim() || 'Other';
+    return v;
+}
+
+function toggleResultDate() {
+    const s   = get('m-status');
+    const row = document.getElementById('result-date-row');
+    const lbl = document.getElementById('result-date-lbl');
+    const map  = { 'Awarded':'Award Date', 'Cancelled':'Cancellation Date' };
+    if (map[s]) { row.style.display = ''; lbl.textContent = map[s]; }
+    else        { row.style.display = 'none'; }
+}
+
+// ── SAVE ───────────────────────────────────────────────
+async function saveTender() {
+    const name = get('m-name');
+    if (!name) { alert('Name of Work is required.'); return; }
+
+    const allotDate = get('m-allot');
+    const data = {
+        nameOfWork:    name,
+        enividaNumber: get('m-enivida'),
+        tenderNumber:  get('m-tender-no'),
+        department:    getDept(),
+        fileHandler:   get('m-handler'),
+        tenderMode:    get('m-mode'),
+        tenderType:    get('m-type'),
+        priceType:     get('m-price'),
+        nature:        get('m-nature'),
+        shutdownJob:   get('m-shutdown'),
+        afJob:         get('m-af'),
+        tenderSplit:   get('m-split'),
+        splitCount:    get('m-split') === 'Yes' ? (parseInt(document.getElementById('m-split-count').value) || null) : null,
+        allotmentDate: allotDate,
+        leadDays:      allotDate ? calcLeadDays(allotDate, get('m-status'), get('m-result-date')) : null,
+        financialYear: getFY(allotDate),
+        status:        get('m-status'),
+        resultDate:    get('m-result-date'),
+        valueInclGST:    parseFloat(document.getElementById('m-val-incl').value) || null,
+        valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
+        finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
+        remarks:       get('m-remarks'),
+    };
+
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+        if (editId) {
+            await fbPatch(`tenders/${editId}`, data);
+            const idx = tenders.findIndex(t => t.id === editId);
+            if (idx !== -1) tenders[idx] = { id: editId, ...data };
+            toast('Tender updated ✓');
+        } else {
+            data.createdAt = Date.now();
+            const res = await fbPost('tenders', data);
+            tenders.unshift({ id: res.name, ...data });
+            toast('Tender added ✓');
+        }
+        closeModal();
+        rebuildFilters();
+        applyFilters();
+    } catch (e) {
+        alert('Save failed: ' + e.message);
+    } finally {
+        btn.disabled = false; btn.textContent = 'Save Tender';
+    }
+}
+
+// ── DELETE ─────────────────────────────────────────────
+function openDel(id) { delId = id; show('confirm-bg'); }
+function closeConfirm() { delId = null; hide('confirm-bg'); }
+
+async function execDelete() {
+    if (!delId) return;
+    try {
+        await fbDelete(`tenders/${delId}`);
+        tenders = tenders.filter(t => t.id !== delId);
+        closeConfirm();
+        rebuildFilters();
+        applyFilters();
+        toast('Tender deleted');
+    } catch (e) {
+        alert('Delete failed: ' + e.message);
+    }
+}
+// ── CLEAR FILTERS ─────────────────────────────────────
+function toggleRemark(el, event) {
+    event.stopPropagation();
+    const pop = document.getElementById('remarks-popover');
+    const text = el.dataset.full;
+    if (pop.classList.contains('show') && pop.dataset.src === el.dataset.id) {
+        pop.classList.remove('show'); return;
+    }
+    pop.textContent = text;
+    pop.dataset.src = el.dataset.id;
+    pop.classList.add('show');
+    const r = el.getBoundingClientRect();
+    let top = r.bottom + 6, left = r.left;
+    if (left + 320 > window.innerWidth - 8) left = window.innerWidth - 328;
+    if (top + 200 > window.innerHeight - 8) top = r.top - 210;
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+}
+document.addEventListener('click', () => {
+    const pop = document.getElementById('remarks-popover');
+    if (pop) pop.classList.remove('show');
+});
+
+function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('f-status').value = '';
+    document.getElementById('f-fy').value = '';
+    document.getElementById('f-mode').value = '';
+    document.getElementById('f-dept').value = '';
+    applyFilters();
+}
+
+// ── EXPORT TO EXCEL ────────────────────────────────────
+function exportExcel() {
+    if (!filteredRows.length) { toast('No data to export'); return; }
+
+    const headers = [
+        'Name of Work', 'Enivida No.', 'Tender No.', 'Department',
+        'Tender Mode', 'Tender Type', 'Price Type', 'Nature',
+        'Shutdown Job', 'Status', 'Allotment Date', 'Lead Days',
+        'Result Date', 'Est. Value (incl. GST)',
+        'Est. Value (excl. GST)', 'Final Landed Cost', 'AF Job', 'Tender Split', 'No. of Splits', 'File Handler', 'Financial Year', 'Remarks'
+    ];
+
+    const dataRows = filteredRows.map(t => [
+        t.nameOfWork      || '',
+        t.enividaNumber   || '',
+        t.tenderNumber    || '',
+        t.department      || '',
+        t.tenderMode      || '',
+        t.tenderType      || '',
+        t.priceType       || '',
+        t.nature          || '',
+        t.shutdownJob     || '',
+        t.status          || '',
+        t.allotmentDate   || '',
+        t.allotmentDate ? calcLeadDays(t.allotmentDate, t.status, t.resultDate) : '',
+        t.resultDate      || '',
+        t.valueInclGST != null ? t.valueInclGST : '',
+        t.valueExclGST != null ? t.valueExclGST : '',
+        t.finalLandedCost != null ? t.finalLandedCost : '',
+        t.afJob           || '',
+        t.tenderSplit     || '',
+        t.splitCount != null ? t.splitCount : '',
+        t.fileHandler     || '',
+        t.financialYear   || '',
+        t.remarks         || ''
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+
+    ws['!cols'] = [
+        {wch:40},{wch:14},{wch:18},{wch:22},{wch:12},{wch:30},
+        {wch:12},{wch:10},{wch:12},{wch:12},{wch:14},{wch:10},
+        {wch:14},{wch:22},{wch:22},{wch:18},{wch:8},{wch:12},{wch:10},{wch:18},{wch:14},{wch:35}
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tenders');
+
+    const fy  = document.getElementById('f-fy').value;
+    const stat = document.getElementById('f-status').value;
+    const suffix = [fy, stat].filter(Boolean).join('_') || 'All';
+    XLSX.writeFile(wb, `MyTenders_${suffix}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast(`Exported ${filteredRows.length} records ✓`);
+}
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
