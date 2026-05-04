@@ -1471,6 +1471,29 @@ function openImport() {
     document.getElementById('import-file-input').click();
 }
 
+function detectHeaderRow(rows) {
+    // Score each of the first 15 rows by how many cells match known field aliases
+    const limit = Math.min(15, rows.length);
+    let bestRow = 0, bestScore = -1;
+    for (let i = 0; i < limit; i++) {
+        const row = rows[i];
+        let score = 0;
+        row.forEach(cell => {
+            const norm = String(cell || '').toLowerCase().replace(/\s+/g,' ').trim();
+            if (!norm) return;
+            for (const f of IMPORT_FIELDS) {
+                if (f.aliases.some(a => a === norm || norm.includes(a) || a.includes(norm))) {
+                    score += 2; break;
+                }
+            }
+            // Bonus: cell looks like a label (text, not a number/date)
+            if (isNaN(cell) && !(cell instanceof Date) && norm.length > 1) score += 0.5;
+        });
+        if (score > bestScore) { bestScore = score; bestRow = i; }
+    }
+    return bestRow;
+}
+
 function handleImportFile(input) {
     const file = input.files[0];
     if (!file) return;
@@ -1481,8 +1504,9 @@ function handleImportFile(input) {
             const ws = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
             if (rows.length < 2) { alert('File appears empty or has no data rows.'); return; }
-            importHeaders = rows[0].map(h => String(h).trim());
-            importData    = rows.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+            const hdrRow  = detectHeaderRow(rows);
+            importHeaders = rows[hdrRow].map(h => String(h).trim());
+            importData    = rows.slice(hdrRow + 1).filter(r => r.some(c => String(c).trim() !== ''));
             importMapping = autoMapColumns(importHeaders);
             showImportModal();
         } catch(err) {
