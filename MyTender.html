@@ -447,6 +447,35 @@
         }
         #toast.show { opacity: 1; }
 
+        /* ── DEDUP MODAL ── */
+        .dup-group {
+            border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 14px; overflow: hidden;
+        }
+        .dup-group-head {
+            background: #fef7e0; padding: 8px 14px; font-size: 12px;
+            font-weight: 700; color: #7a5800; border-bottom: 1px solid #f9e0a0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .dup-entry {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; border-bottom: 1px solid #f1f3f4; font-size: 13px;
+        }
+        .dup-entry:last-child { border-bottom: none; }
+        .dup-entry.keep-row { background: #f0fdf4; }
+        .dup-entry input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+        .dup-keep-badge {
+            font-size: 10px; font-weight: 700; background: #d1fae5;
+            color: #065f46; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+        }
+        .dup-del-badge {
+            font-size: 10px; font-weight: 700; background: #fce8e6;
+            color: #c5221f; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+        }
+        .dup-info { flex: 1; min-width: 0; }
+        .dup-info .main { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dup-info .sub  { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+
         /* ── IMPORT MODAL ── */
         .import-modal { max-width: 900px; }
         .mapping-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
@@ -647,6 +676,7 @@
             <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
             <button class="btn btn-outline" onclick="openImport()" title="Import tenders from Excel">⬆ Import Excel</button>
             <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this)">
+            <button class="btn btn-outline" id="dedup-btn" onclick="openDedup()" title="Find and remove duplicate entries" style="display:none;">🔍 Find Duplicates</button>
         </div>
 
         <!-- Table -->
@@ -875,6 +905,21 @@
     </div>
 </div>
 
+<!-- ═══ DEDUP MODAL ═══ -->
+<div id="dedup-bg" class="backdrop hidden" onclick="if(event.target.id==='dedup-bg')closeDedup()">
+    <div class="modal" style="max-width:860px;">
+        <div class="modal-head">
+            <h2>🔍 Find &amp; Remove Duplicates</h2>
+            <button class="modal-close" onclick="closeDedup()">×</button>
+        </div>
+        <div class="modal-body" id="dedup-body"></div>
+        <div class="modal-foot" id="dedup-foot">
+            <button class="btn btn-outline" onclick="closeDedup()">Close</button>
+            <button class="btn btn-danger" id="dedup-del-btn" onclick="execDedup()" style="display:none;">Delete Selected Duplicates</button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ IMPORT MODAL ═══ -->
 <div id="import-bg" class="backdrop hidden" onclick="importBgClick(event)">
     <div class="modal import-modal">
@@ -990,6 +1035,9 @@ async function loadTenders() {
         applyFilters();
         hide('tbl-status');
         setSyncStatus('Synced ✓');
+        // Show dedup button if any duplicates exist
+        document.getElementById('dedup-btn').style.display =
+            findDupGroups().length ? '' : 'none';
     } catch (e) {
         document.getElementById('tbl-status').textContent =
             'Could not connect. Check your database URL. (' + e.message + ')';
@@ -1826,6 +1874,155 @@ async function confirmImport() {
     if (dupsSkipped) parts.push(`${dupsSkipped} duplicates skipped`);
     if (skipped)     parts.push(`${skipped} blank rows skipped`);
     toast(parts.join(', ') + ' ✓');
+}
+
+// ── DEDUP ──────────────────────────────────────────────
+function dupKey(t) {
+    const tn = String(t.tenderNumber  || '').trim().toLowerCase();
+    const wo = String(t.woNumber      || '').trim().toLowerCase();
+    const en = String(t.enividaNumber || '').trim().toLowerCase();
+    const vn = String(t.vendorName    || '').trim().toLowerCase();
+    if (tn && wo)  return `tn:${tn}|wo:${wo}`;
+    if (en && wo)  return `en:${en}|wo:${wo}`;
+    if (tn && vn)  return `tn:${tn}|vn:${vn}`;
+    if (tn)        return `tn:${tn}`;
+    if (en)        return `en:${en}`;
+    return null; // can't key on name alone — too risky
+}
+
+function findDupGroups() {
+    const map = {};
+    tenders.forEach(t => {
+        const k = dupKey(t);
+        if (!k) return;
+        if (!map[k]) map[k] = [];
+        map[k].push(t);
+    });
+    return Object.values(map).filter(g => g.length > 1);
+}
+
+let dedupToDelete = new Set();
+
+function openDedup() {
+    dedupToDelete = new Set();
+    const groups = findDupGroups();
+    const body   = document.getElementById('dedup-body');
+    const delBtn = document.getElementById('dedup-del-btn');
+
+    if (!groups.length) {
+        body.innerHTML = `<div style="text-align:center;padding:40px 24px;color:var(--text-sub);">
+            <div style="font-size:36px;margin-bottom:12px;">✅</div>
+            <strong style="color:var(--text);">No duplicates found!</strong>
+            <p style="margin-top:6px;font-size:13px;">All your records appear to be unique.</p>
+        </div>`;
+        delBtn.style.display = 'none';
+        show('dedup-bg');
+        return;
+    }
+
+    const totalDups = groups.reduce((s, g) => s + g.length - 1, 0);
+    body.innerHTML = `
+        <p style="font-size:13px;color:var(--text-sub);margin-bottom:16px;">
+            Found <strong>${groups.length} duplicate group${groups.length>1?'s':''}</strong>
+            (${totalDups} extra record${totalDups>1?'s':''}).
+            The <span style="background:#d1fae5;color:#065f46;font-weight:700;padding:1px 6px;border-radius:4px;">KEEP</span> record is auto-selected
+            (most data / newest). Check the ones you want to <strong>delete</strong>.
+        </p>
+        <div id="dedup-groups">${groups.map((g, gi) => renderDupGroup(g, gi)).join('')}</div>
+    `;
+    updateDedupBtn();
+    delBtn.style.display = '';
+    show('dedup-bg');
+}
+
+function renderDupGroup(group, gi) {
+    // Sort: most filled fields first, then newest
+    const scored = group.map(t => {
+        const fields = ['tenderNumber','woNumber','vendorName','enividaNumber','department',
+            'allotmentDate','woDate','valueInclGST','finalLandedCost','remarks'];
+        const score = fields.filter(f => t[f]).length * 1000 + (t.createdAt || 0) / 1e10;
+        return { t, score };
+    }).sort((a, b) => b.score - a.score);
+
+    const key    = dupKey(scored[0].t);
+    const label  = scored[0].t.nameOfWork || key;
+    const extras = scored.slice(1).map(s => s.t.id);
+    extras.forEach(id => dedupToDelete.add(id));
+
+    return `<div class="dup-group">
+        <div class="dup-group-head">
+            <span>📄 ${esc(label)}</span>
+            <span style="font-weight:500;">${group.length} entries</span>
+        </div>
+        ${scored.map((s, i) => {
+            const t      = s.t;
+            const isKeep = i === 0;
+            const sub    = [t.tenderNumber, t.woNumber, t.vendorName, t.allotmentDate]
+                .filter(Boolean).map(esc).join(' · ');
+            return `<div class="dup-entry${isKeep?' keep-row':''}" id="de-${t.id}">
+                <input type="checkbox" ${isKeep?'':'checked'} data-gi="${gi}" data-id="${t.id}"
+                    onchange="toggleDedupRow(this)">
+                <div class="dup-info">
+                    <div class="main">${esc(t.nameOfWork||'—')}</div>
+                    <div class="sub">${sub || 'No reference data'}</div>
+                </div>
+                <span class="${isKeep?'dup-keep-badge':'dup-del-badge'}" id="dbadge-${t.id}">${isKeep?'KEEP':'DELETE'}</span>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+
+function toggleDedupRow(chk) {
+    const id = chk.dataset.id;
+    const badge = document.getElementById(`dbadge-${id}`);
+    const row   = document.getElementById(`de-${id}`);
+    if (chk.checked) {
+        dedupToDelete.add(id);
+        badge.className = 'dup-del-badge'; badge.textContent = 'DELETE';
+        row.classList.remove('keep-row');
+    } else {
+        dedupToDelete.delete(id);
+        badge.className = 'dup-keep-badge'; badge.textContent = 'KEEP';
+        row.classList.add('keep-row');
+    }
+    updateDedupBtn();
+}
+
+function updateDedupBtn() {
+    const btn = document.getElementById('dedup-del-btn');
+    btn.textContent = dedupToDelete.size
+        ? `Delete ${dedupToDelete.size} Duplicate${dedupToDelete.size>1?'s':''}`
+        : 'Delete Selected Duplicates';
+    btn.disabled = dedupToDelete.size === 0;
+}
+
+async function execDedup() {
+    if (!dedupToDelete.size) return;
+    if (!confirm(`Permanently delete ${dedupToDelete.size} duplicate record${dedupToDelete.size>1?'s':''}? This cannot be undone.`)) return;
+
+    const btn = document.getElementById('dedup-del-btn');
+    btn.disabled = true; btn.textContent = 'Deleting…';
+
+    let done = 0, failed = 0;
+    for (const id of dedupToDelete) {
+        try {
+            await fbDelete(`tenders/${id}`);
+            tenders = tenders.filter(t => t.id !== id);
+            done++;
+        } catch(e) { failed++; }
+    }
+
+    rebuildFilters();
+    applyFilters();
+    closeDedup();
+    document.getElementById('dedup-btn').style.display =
+        findDupGroups().length ? '' : 'none';
+    toast(`Deleted ${done} duplicate${done>1?'s':''}${failed ? `, ${failed} failed` : ''} ✓`);
+}
+
+function closeDedup() {
+    hide('dedup-bg');
+    dedupToDelete = new Set();
 }
 
 function closeImport() {
