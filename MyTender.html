@@ -577,7 +577,7 @@
             </div>
             <div class="stat-card s-af">
                 <div class="num" id="c-af">0</div>
-                <div class="lbl">AF Jobs</div>
+                <div class="lbl">AF Budget</div>
                 <div class="sub-cost" id="c-af-cost"></div>
             </div>
         </div>
@@ -670,6 +670,7 @@
                             <th>Classification</th>
                             <th>Status</th>
                             <th>Allotment / Lead</th>
+                            <th>Work Order</th>
                             <th>Financials</th>
                             <th>FY / Handler</th>
                             <th>Remarks</th>
@@ -788,10 +789,10 @@
                     </select>
                 </div>
                 <div class="field">
-                    <label>AF Job</label>
-                    <select id="m-af">
-                        <option>No</option>
-                        <option>Yes</option>
+                    <label>Budget Type</label>
+                    <select id="m-budget-type">
+                        <option>Revenue</option>
+                        <option>AF</option>
                     </select>
                 </div>
                 <div class="field">
@@ -809,7 +810,7 @@
                     <input type="date" id="m-allot" oninput="recalcLead()">
                 </div>
                 <div class="field">
-                    <label>Lead Days (from allotment to today)</label>
+                    <label>Lead Days (Allotment → WO Date)</label>
                     <div class="lead-display" id="lead-disp">— days</div>
                 </div>
                 <div class="field">
@@ -823,6 +824,25 @@
                 <div class="field" id="result-date-row" style="display:none;">
                     <label id="result-date-lbl">Result Date</label>
                     <input type="date" id="m-result-date">
+                </div>
+
+                <div class="sec-label">Work Order</div>
+
+                <div class="field">
+                    <label>PR No</label>
+                    <input type="text" id="m-pr-no" placeholder="Purchase Requisition No.">
+                </div>
+                <div class="field">
+                    <label>WO Number</label>
+                    <input type="text" id="m-wo-no" placeholder="Work Order Number">
+                </div>
+                <div class="field">
+                    <label>WO Date</label>
+                    <input type="date" id="m-wo-date" oninput="recalcLead()">
+                </div>
+                <div class="field">
+                    <label>Vendor Name</label>
+                    <input type="text" id="m-vendor" placeholder="Awarded vendor / supplier">
                 </div>
 
                 <div class="sec-label">Financial</div>
@@ -997,12 +1017,10 @@ function getFY(dateStr) {
     return m >= 3 ? `${y}-${String(y+1).slice(2)}` : `${y-1}-${String(y).slice(2)}`;
 }
 
-// For awarded/cancelled tenders freeze lead days at the result date
-function calcLeadDays(allotDate, status, resultDate) {
+// Lead days = allotment → WO date; falls back to today if no WO date
+function calcLeadDays(allotDate, woDate) {
     if (!allotDate) return null;
-    const end = (['Awarded', 'Cancelled'].includes(status) && resultDate)
-        ? new Date(resultDate)
-        : new Date();
+    const end = woDate ? new Date(woDate) : new Date();
     return Math.round((end - new Date(allotDate)) / 86400000);
 }
 
@@ -1063,7 +1081,8 @@ function applyFilters() {
             t.nameOfWork, t.tenderNumber, t.enividaNumber, t.department,
             t.fileHandler, t.tenderMode, t.tenderType, t.priceType,
             t.nature, t.status, t.financialYear, t.remarks,
-            t.allotmentDate, t.resultDate, t.shutdownJob, t.afJob, t.tenderSplit,
+            t.allotmentDate, t.resultDate, t.shutdownJob, t.budgetType, t.tenderSplit,
+            t.prNo, t.woNumber, t.woDate, t.vendorName,
             t.finalLandedCost != null ? String(t.finalLandedCost) : '',
             t.valueInclGST != null ? String(t.valueInclGST) : '',
             t.valueExclGST != null ? String(t.valueExclGST) : '',
@@ -1115,7 +1134,7 @@ function updateDashboard() {
     const arcRows      = rows.filter(t=>t.nature==='ARC');
     const onetimeRows  = rows.filter(t=>t.nature==='One-Time');
     const shutdownRows = rows.filter(t=>t.shutdownJob==='Yes');
-    const afRows       = rows.filter(t=>t.afJob==='Yes');
+    const afRows       = rows.filter(t=>t.budgetType==='AF');
 
     document.getElementById('c-arc').textContent      = arcRows.length;
     document.getElementById('c-onetime').textContent  = onetimeRows.length;
@@ -1137,11 +1156,11 @@ function updateDashboard() {
     document.getElementById('c-etender').textContent  = rows.filter(t => t.tenderMode === 'E-Tender').length;
     document.getElementById('c-physical').textContent = rows.filter(t => t.tenderMode === 'Physical').length;
 
-    // ── Avg lead days for awarded tenders
-    const awardedWithLead = awarded.filter(t => t.allotmentDate);
+    // ── Avg lead days for awarded tenders (allotment → WO date)
+    const awardedWithLead = awarded.filter(t => t.allotmentDate && t.woDate);
     if (awardedWithLead.length) {
         const avgLead = Math.round(
-            awardedWithLead.reduce((s, t) => s + calcLeadDays(t.allotmentDate, t.status, t.resultDate), 0)
+            awardedWithLead.reduce((s, t) => s + calcLeadDays(t.allotmentDate, t.woDate), 0)
             / awardedWithLead.length
         );
         document.getElementById('c-leadavg').textContent = avgLead + 'd';
@@ -1172,8 +1191,8 @@ function renderTable(rows) {
     hide('tbl-empty'); show('tbl-scroll');
 
     document.getElementById('tbl-body').innerHTML = rows.map((t, i) => {
-        const lead = t.allotmentDate ? calcLeadDays(t.allotmentDate, t.status, t.resultDate) : null;
-        const frozen = ['Awarded','Cancelled'].includes(t.status) && t.resultDate;
+        const lead    = t.allotmentDate ? calcLeadDays(t.allotmentDate, t.woDate) : null;
+        const frozen  = !!t.woDate;
         const leadCls = frozen ? 'lead-frozen' : lead === null ? '' : lead <= 30 ? 'lead-ok' : lead <= 90 ? 'lead-warn' : 'lead-alert';
         const leadHtml = lead !== null
             ? `<div class="lead-pill ${leadCls}">${lead}d${frozen ? ' ✓' : ''}</div>`
@@ -1189,11 +1208,17 @@ function renderTable(rows) {
                ${t.finalLandedCost ? `<div class="fin-landed">⚑ ${fmtINR(t.finalLandedCost)}</div>` : ''}`
             : `<span class="cell-dim">—</span>`;
 
+        const woHtml = (t.woDate || t.woNumber || t.vendorName)
+            ? `${t.woDate   ? `<div style="font-size:12px;">${fmtDate(t.woDate)}</div>` : ''}
+               ${t.woNumber ? `<div class="cell-sub">${esc(t.woNumber)}</div>` : ''}
+               ${t.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(t.vendorName)}</div>` : ''}`
+            : `<span class="cell-dim">—</span>`;
+
         return `<tr>
             <td style="color:#c5c8cf;font-size:11px;width:32px;">${i+1}</td>
             <td style="min-width:200px;max-width:280px;">
-                <div class="cell-main">${esc(t.nameOfWork)}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.afJob==='Yes'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
-                ${t.enividaNumber||t.tenderNumber ? `<div class="cell-sub">${[t.enividaNumber,t.tenderNumber].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
+                <div class="cell-main">${esc(t.nameOfWork)}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
+                <div class="cell-sub">${[t.prNo, t.enividaNumber, t.tenderNumber].filter(Boolean).map(esc).join(' · ') || ''}</div>
             </td>
             <td style="white-space:nowrap;">${dim(esc(t.department))}</td>
             <td style="min-width:110px;">
@@ -1202,13 +1227,15 @@ function renderTable(rows) {
             </td>
             <td style="white-space:nowrap;">
                 <div>${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : `<span class="cell-dim">—</span>`}</div>
-                ${t.priceType && t.priceType!=='Normal' ? `<div class="cell-sub" style="margin-top:3px;">${esc(t.priceType)}</div>` : ''}
+                ${t.budgetType ? `<div class="cell-sub" style="margin-top:3px;">${esc(t.budgetType)}</div>` : ''}
+                ${t.priceType && t.priceType!=='Normal' ? `<div class="cell-sub">${esc(t.priceType)}</div>` : ''}
             </td>
             <td style="white-space:nowrap;">${statusBadge(t.status)}</td>
             <td style="white-space:nowrap;">
                 <div style="font-size:12px;">${t.allotmentDate ? fmtDate(t.allotmentDate) : `<span class="cell-dim">—</span>`}</div>
                 ${leadHtml}
             </td>
+            <td style="min-width:130px;">${woHtml}</td>
             <td style="min-width:140px;">${finHtml}</td>
             <td style="white-space:nowrap;">
                 ${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : `<span class="cell-dim">—</span>`}
@@ -1257,21 +1284,25 @@ function openEdit(id) {
         set('m-dept', '');
         document.getElementById('other-dept-wrap').style.display = 'none';
     }
-    set('m-handler',     t.fileHandler);
-    set('m-mode',        t.tenderMode);
-    set('m-type',        t.tenderType);
-    set('m-price',       t.priceType);
-    set('m-nature',      t.nature);
-    set('m-shutdown',    t.shutdownJob);
-    set('m-af',          t.afJob);
-    set('m-split',       t.tenderSplit);
-    set('m-allot',       t.allotmentDate);
-    set('m-status',      t.status);
-    set('m-result-date', t.resultDate);
-    set('m-val-incl',    t.valueInclGST ?? '');
-    set('m-val-excl',    t.valueExclGST ?? '');
-    set('m-landed',      t.finalLandedCost ?? '');
-    set('m-remarks',     t.remarks);
+    set('m-handler',      t.fileHandler);
+    set('m-mode',         t.tenderMode);
+    set('m-type',         t.tenderType);
+    set('m-price',        t.priceType);
+    set('m-nature',       t.nature);
+    set('m-shutdown',     t.shutdownJob);
+    set('m-budget-type',  t.budgetType || 'Revenue');
+    set('m-split',        t.tenderSplit);
+    set('m-allot',        t.allotmentDate);
+    set('m-status',       t.status);
+    set('m-result-date',  t.resultDate);
+    set('m-pr-no',        t.prNo);
+    set('m-wo-no',        t.woNumber);
+    set('m-wo-date',      t.woDate);
+    set('m-vendor',       t.vendorName);
+    set('m-val-incl',     t.valueInclGST ?? '');
+    set('m-val-excl',     t.valueExclGST ?? '');
+    set('m-landed',       t.finalLandedCost ?? '');
+    set('m-remarks',      t.remarks);
     recalcLead();
     toggleResultDate();
     show('modal-bg');
@@ -1283,18 +1314,18 @@ function bgClick(e) { if (e.target.id === 'modal-bg') closeModal(); }
 function resetForm() {
     ['m-name','m-enivida','m-tender-no','m-handler',
      'm-allot','m-result-date','m-val-incl','m-val-excl','m-remarks',
-     'm-dept-other'].forEach(id => set(id, ''));
+     'm-dept-other','m-pr-no','m-wo-no','m-wo-date','m-vendor'].forEach(id => set(id, ''));
     set('m-dept', '');
     document.getElementById('other-dept-wrap').style.display = 'none';
-    set('m-mode',     'GEM');
-    set('m-type',     'Open Tender');
-    set('m-price',    'Fixed');
-    set('m-nature',   'ARC');
-    set('m-shutdown', 'No');
-    set('m-af',       'No');
-    set('m-split',    'No');
-    set('m-landed',   '');
-    set('m-status',   'In Progress');
+    set('m-mode',        'GEM');
+    set('m-type',        'Open Tender');
+    set('m-price',       'Normal');
+    set('m-nature',      'ARC');
+    set('m-shutdown',    'No');
+    set('m-budget-type', 'Revenue');
+    set('m-split',       'No');
+    set('m-landed',      '');
+    set('m-status',      'In Progress');
     document.getElementById('lead-disp').textContent = '— days';
     document.getElementById('lead-disp').style.color = 'var(--primary)';
     document.getElementById('result-date-row').style.display = 'none';
@@ -1302,10 +1333,12 @@ function resetForm() {
 
 
 function recalcLead() {
-    const a = document.getElementById('m-allot').value;
+    const a  = document.getElementById('m-allot').value;
+    const wo = document.getElementById('m-wo-date').value;
     const el = document.getElementById('lead-disp');
     if (a) {
-        const diff = Math.round((new Date() - new Date(a)) / 86400000);
+        const end  = wo ? new Date(wo) : new Date();
+        const diff = Math.round((end - new Date(a)) / 86400000);
         el.textContent = diff >= 0 ? `${diff} days` : 'Future date';
         el.style.color  = diff >= 0 ? 'var(--primary)' : '#ea4335';
     } else {
@@ -1341,28 +1374,33 @@ async function saveTender() {
     if (!name) { alert('Name of Work is required.'); return; }
 
     const allotDate = get('m-allot');
+    const woDate    = get('m-wo-date');
     const data = {
-        nameOfWork:    name,
-        enividaNumber: get('m-enivida'),
-        tenderNumber:  get('m-tender-no'),
-        department:    getDept(),
-        fileHandler:   get('m-handler'),
-        tenderMode:    get('m-mode'),
-        tenderType:    get('m-type'),
-        priceType:     get('m-price'),
-        nature:        get('m-nature'),
-        shutdownJob:   get('m-shutdown'),
-        afJob:         get('m-af'),
-        tenderSplit:   get('m-split'),
-        allotmentDate: allotDate,
-        leadDays:      allotDate ? calcLeadDays(allotDate, get('m-status'), get('m-result-date')) : null,
-        financialYear: getFY(allotDate),
-        status:        get('m-status'),
-        resultDate:    get('m-result-date'),
+        nameOfWork:      name,
+        enividaNumber:   get('m-enivida'),
+        tenderNumber:    get('m-tender-no'),
+        department:      getDept(),
+        fileHandler:     get('m-handler'),
+        tenderMode:      get('m-mode'),
+        tenderType:      get('m-type'),
+        priceType:       get('m-price'),
+        nature:          get('m-nature'),
+        shutdownJob:     get('m-shutdown'),
+        budgetType:      get('m-budget-type'),
+        tenderSplit:     get('m-split'),
+        allotmentDate:   allotDate,
+        leadDays:        allotDate ? calcLeadDays(allotDate, woDate) : null,
+        financialYear:   getFY(allotDate),
+        status:          get('m-status'),
+        resultDate:      get('m-result-date'),
+        prNo:            get('m-pr-no'),
+        woNumber:        get('m-wo-no'),
+        woDate:          woDate,
+        vendorName:      get('m-vendor'),
         valueInclGST:    parseFloat(document.getElementById('m-val-incl').value) || null,
         valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
         finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
-        remarks:       get('m-remarks'),
+        remarks:         get('m-remarks'),
     };
 
     const btn = document.getElementById('save-btn');
@@ -1451,11 +1489,15 @@ const IMPORT_FIELDS = [
     { key:'priceType',       label:'Price Type',              aliases:['price type','pricing','price','pricetype'] },
     { key:'nature',          label:'Nature',                  aliases:['nature','contract nature','tender nature'] },
     { key:'shutdownJob',     label:'Shutdown Job',            aliases:['shutdown job','shutdown','is shutdown','shutdownjob'] },
-    { key:'afJob',           label:'AF Job',                  aliases:['af job','af','is af','afjob'] },
+    { key:'budgetType',      label:'Budget Type',             aliases:['budget type','budget','af job','af','budgettype','fund type'] },
     { key:'tenderSplit',     label:'Tender Split',            aliases:['tender split','split','is split','tendersplit'] },
     { key:'allotmentDate',   label:'Allotment Date',          aliases:['allotment date','date of allotment','allotment','start date','date allotted','allotmentdate'] },
     { key:'status',          label:'Status',                  aliases:['status','tender status','current status'] },
     { key:'resultDate',      label:'Result Date',             aliases:['result date','award date','cancellation date','result','awarded date','resultdate'] },
+    { key:'prNo',            label:'PR No',                   aliases:['pr no','pr number','pr no.','purchase requisition','prno','pr'] },
+    { key:'woNumber',        label:'WO Number',               aliases:['wo number','wo no','wo no.','work order number','work order no','wonumber','wo'] },
+    { key:'woDate',          label:'WO Date',                 aliases:['wo date','work order date','order date','wodate'] },
+    { key:'vendorName',      label:'Vendor Name',             aliases:['vendor name','vendor','supplier','contractor','vendorname'] },
     { key:'valueInclGST',    label:'Est. Value (incl. GST)',  aliases:['est. value (incl. gst)','value incl gst','value including gst','incl gst','value (incl)','est value incl','value incl','valueinclgst'] },
     { key:'valueExclGST',    label:'Est. Value (excl. GST)',  aliases:['est. value (excl. gst)','value excl gst','value excluding gst','excl gst','value (excl)','est value excl','value excl','valueexclgst'] },
     { key:'finalLandedCost', label:'Final Landed Cost',       aliases:['final landed cost','landed cost','final cost','awarded value','contract value','finallandedcost'] },
@@ -1672,7 +1714,9 @@ async function confirmImport() {
 
         const allotDate  = parseImportDate(rec.allotmentDate);
         const resultDate = parseImportDate(rec.resultDate);
+        const woDate     = parseImportDate(rec.woDate);
         const status     = rec.status ? normalizeStatus(rec.status) : 'In Progress';
+        const budget     = rec.budgetType ? (String(rec.budgetType).trim() === 'AF' ? 'AF' : 'Revenue') : 'Revenue';
 
         const data = {
             nameOfWork:      name,
@@ -1685,16 +1729,20 @@ async function confirmImport() {
             priceType:       String(rec.priceType       || 'Normal').trim(),
             nature:          String(rec.nature          || 'ARC').trim(),
             shutdownJob:     normalizeYesNo(rec.shutdownJob),
-            afJob:           normalizeYesNo(rec.afJob),
+            budgetType:      budget,
             tenderSplit:     normalizeYesNo(rec.tenderSplit),
             allotmentDate:   allotDate,
             status:          status,
             resultDate:      resultDate,
+            prNo:            String(rec.prNo      || '').trim(),
+            woNumber:        String(rec.woNumber  || '').trim(),
+            woDate:          woDate,
+            vendorName:      String(rec.vendorName || '').trim(),
             valueInclGST:    parseFloat(rec.valueInclGST)    || null,
             valueExclGST:    parseFloat(rec.valueExclGST)    || null,
             finalLandedCost: parseFloat(rec.finalLandedCost) || null,
             remarks:         String(rec.remarks || '').trim(),
-            leadDays:        allotDate ? calcLeadDays(allotDate, status, resultDate) : null,
+            leadDays:        allotDate ? calcLeadDays(allotDate, woDate) : null,
             financialYear:   getFY(allotDate),
             createdAt:       Date.now(),
         };
@@ -1728,32 +1776,37 @@ function exportExcel() {
     if (!filteredRows.length) { toast('No data to export'); return; }
 
     const headers = [
-        'Name of Work', 'Enivida No.', 'Tender No.', 'Department',
-        'Tender Mode', 'Tender Type', 'Price Type', 'Nature',
-        'Shutdown Job', 'Status', 'Allotment Date', 'Lead Days',
-        'Result Date', 'Est. Value (incl. GST)',
-        'Est. Value (excl. GST)', 'Final Landed Cost', 'AF Job', 'Tender Split', 'File Handler', 'Financial Year', 'Remarks'
+        'Name of Work', 'Enivida No.', 'Tender No.', 'PR No.', 'Department',
+        'Tender Mode', 'Tender Type', 'Price Type', 'Nature', 'Budget Type',
+        'Shutdown Job', 'Tender Split', 'Status', 'Allotment Date', 'Lead Days',
+        'Result Date', 'WO Number', 'WO Date', 'Vendor Name',
+        'Est. Value (incl. GST)', 'Est. Value (excl. GST)', 'Final Landed Cost',
+        'File Handler', 'Financial Year', 'Remarks'
     ];
 
     const dataRows = filteredRows.map(t => [
         t.nameOfWork      || '',
         t.enividaNumber   || '',
         t.tenderNumber    || '',
+        t.prNo            || '',
         t.department      || '',
         t.tenderMode      || '',
         t.tenderType      || '',
         t.priceType       || '',
         t.nature          || '',
+        t.budgetType      || '',
         t.shutdownJob     || '',
+        t.tenderSplit     || '',
         t.status          || '',
         t.allotmentDate   || '',
         t.leadDays != null ? t.leadDays : '',
         t.resultDate      || '',
-        t.valueInclGST != null ? t.valueInclGST : '',
-        t.valueExclGST != null ? t.valueExclGST : '',
+        t.woNumber        || '',
+        t.woDate          || '',
+        t.vendorName      || '',
+        t.valueInclGST    != null ? t.valueInclGST    : '',
+        t.valueExclGST    != null ? t.valueExclGST    : '',
         t.finalLandedCost != null ? t.finalLandedCost : '',
-        t.afJob           || '',
-        t.tenderSplit     || '',
         t.fileHandler     || '',
         t.financialYear   || '',
         t.remarks         || ''
@@ -1762,9 +1815,10 @@ function exportExcel() {
     const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
 
     ws['!cols'] = [
-        {wch:40},{wch:14},{wch:18},{wch:22},{wch:12},{wch:30},
-        {wch:10},{wch:10},{wch:12},{wch:12},{wch:14},{wch:10},
-        {wch:14},{wch:22},{wch:22},{wch:18},{wch:8},{wch:16},{wch:10},{wch:35}
+        {wch:40},{wch:14},{wch:18},{wch:14},{wch:22},{wch:12},{wch:30},
+        {wch:10},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},
+        {wch:14},{wch:18},{wch:14},{wch:20},{wch:22},{wch:22},{wch:18},
+        {wch:20},{wch:12},{wch:35}
     ];
 
     const wb = XLSX.utils.book_new();
