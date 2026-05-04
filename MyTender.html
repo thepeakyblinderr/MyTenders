@@ -882,6 +882,10 @@
                     <input type="number" id="m-val-incl" placeholder="0" min="0" step="1">
                 </div>
                 <div class="field">
+                    <label>Estimate Value (excl. GST) ₹</label>
+                    <input type="number" id="m-val-excl" placeholder="0" min="0" step="1">
+                </div>
+                <div class="field">
                     <label>Final Landed Cost ₹</label>
                     <input type="number" id="m-landed" placeholder="0" min="0" step="1">
                 </div>
@@ -1126,6 +1130,7 @@ function applyFilters() {
             t.prNo, t.woNumber, t.woDate, t.vendorName,
             t.finalLandedCost != null ? String(t.finalLandedCost) : '',
             t.valueInclGST    != null ? String(t.valueInclGST)    : '',
+            t.valueExclGST    != null ? String(t.valueExclGST)    : '',
             t.leadDays        != null ? String(t.leadDays)        : ''
         ].some(v => (v||'').toLowerCase().includes(q))) return false;
         if (stat && t.status !== stat)       return false;
@@ -1334,6 +1339,7 @@ function openEdit(id) {
     set('m-wo-date',      t.woDate);
     set('m-vendor',       t.vendorName);
     set('m-val-incl',     t.valueInclGST ?? '');
+    set('m-val-excl',     t.valueExclGST ?? '');
     set('m-landed',       t.finalLandedCost ?? '');
     set('m-remarks',      t.remarks);
     recalcLead();
@@ -1346,7 +1352,7 @@ function bgClick(e) { if (e.target.id === 'modal-bg') closeModal(); }
 
 function resetForm() {
     ['m-name','m-enivida','m-tender-no','m-handler',
-     'm-allot','m-result-date','m-val-incl','m-remarks',
+     'm-allot','m-result-date','m-val-incl','m-val-excl','m-remarks',
      'm-dept-other','m-pr-no','m-wo-no','m-wo-date','m-vendor'].forEach(id => set(id, ''));
     set('m-dept', '');
     document.getElementById('other-dept-wrap').style.display = 'none';
@@ -1431,6 +1437,7 @@ async function saveTender() {
         woDate:          woDate,
         vendorName:      get('m-vendor'),
         valueInclGST:    parseFloat(document.getElementById('m-val-incl').value) || null,
+        valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
         finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
         remarks:         get('m-remarks'),
     };
@@ -1531,6 +1538,7 @@ const IMPORT_FIELDS = [
     { key:'woDate',          label:'WO Date',                 aliases:['wo date','work order date','order date','wodate'] },
     { key:'vendorName',      label:'Vendor Name',             aliases:['vendor name','vendor','supplier','contractor','vendorname'] },
     { key:'valueInclGST',    label:'Est. Value (incl. GST)',  aliases:['est. value (incl. gst)','value incl gst','value including gst','incl gst','value (incl)','est value incl','value incl','valueinclgst'] },
+    { key:'valueExclGST',    label:'Est. Value (excl. GST)',  aliases:['est. value (excl. gst)','value excl gst','value excluding gst','excl gst','value (excl)','est value excl','value excl','valueexclgst'] },
     { key:'finalLandedCost', label:'Final Landed Cost',       aliases:['final landed cost','landed cost','final cost','awarded value','contract value','finallandedcost'] },
     { key:'remarks',         label:'Remarks',                 aliases:['remarks','notes','comments','observations'] },
 ];
@@ -1831,6 +1839,7 @@ async function confirmImport() {
             woDate:          woDate,
             vendorName:      String(rec.vendorName || '').trim(),
             valueInclGST:    parseFloat(rec.valueInclGST)    || null,
+            valueExclGST:    parseFloat(rec.valueExclGST)    || null,
             finalLandedCost: parseFloat(rec.finalLandedCost) || null,
             remarks:         String(rec.remarks || '').trim(),
             leadDays:        allotDate ? calcLeadDays(allotDate, woDate) : null,
@@ -2026,7 +2035,7 @@ function exportExcel() {
         'Tender Mode', 'Tender Type', 'Price Type', 'Nature', 'Budget Type',
         'Shutdown Job', 'Tender Split', 'Status', 'Allotment Date', 'Lead Days',
         'Result Date', 'WO Number', 'WO Date', 'Vendor Name',
-        'Est. Value (incl. GST)', 'Final Landed Cost',
+        'Est. Value (incl. GST)', 'Est. Value (excl. GST)', 'Final Landed Cost',
         'File Handler', 'Financial Year', 'Remarks'
     ];
 
@@ -2051,6 +2060,7 @@ function exportExcel() {
         t.woDate          || '',
         t.vendorName      || '',
         t.valueInclGST    != null ? t.valueInclGST    : '',
+        t.valueExclGST    != null ? t.valueExclGST    : '',
         t.finalLandedCost != null ? t.finalLandedCost : '',
         t.fileHandler     || '',
         t.financialYear   || '',
