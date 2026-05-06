@@ -599,7 +599,7 @@ if('serviceWorker' in navigator){
     <div class="stat-chip"><b id="s-stages">0</b>&nbsp;Active</div>
     <div class="stat-chip hidden" id="s-expiry-chip" onclick="openExpiring()" style="cursor:pointer"><b id="s-expiry" style="color:var(--red)">0</b>&nbsp;Expiring</div>
     <div class="stat-chip btn" id="pf-all"  onclick="setPF('')"    style="border-color:rgba(77,128,230,.4);color:var(--accent2)">All</div>
-    <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🔴&nbsp;High&nbsp;<b id="s-high">0</b></div>
+    <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🚨&nbsp;Critical&nbsp;<b id="s-high">0</b></div>
     <div class="stat-chip btn" id="pf-af"   onclick="setPF('af')">🔷&nbsp;AF&nbsp;<b id="s-af">0</b></div>
   </div>
   <div class="board" id="board"></div>
@@ -619,19 +619,22 @@ if('serviceWorker' in navigator){
       <input class="fi" id="f-work-name" placeholder="e.g. Supply of DM Water Chemicals" autocomplete="off"></div>
     <div class="frow"><label class="fl">Stage *</label>
       <select class="fi" id="f-stage"></select></div>
-    <div class="frow"><label class="fl">Priority</label>
+    <div class="frow"><label class="fl">Critical</label>
       <div class="pri-toggle" id="pri-toggle" onclick="togglePri()">
-        <span class="pri-icon">🔴</span>
-        <span class="pri-label">Mark as High Priority</span>
+        <span class="pri-icon">🚨</span>
+        <span class="pri-label">Mark as Critical</span>
         <span class="pri-check" id="pri-check"></span>
       </div>
     </div>
-    <div class="frow"><label class="fl">AF File</label>
+    <div class="frow"><label class="fl">AF Budget</label>
       <div class="pri-toggle af-toggle" id="af-toggle" onclick="toggleAF()">
         <span class="pri-icon">🔷</span>
-        <span class="pri-label">Mark as AF File</span>
+        <span class="pri-label">Mark as AF Budget</span>
         <span class="pri-check" id="af-check"></span>
       </div>
+    </div>
+    <div id="mt-sync-note" style="display:none;font-size:11px;color:var(--dim);padding:0 0 8px 0;text-align:center;">
+      🔗 Critical &amp; AF synced from MyTender — edit there to change
     </div>
     <div class="frow"><label class="fl">Notes</label>
       <textarea class="fi" id="f-notes" placeholder="Any remarks…"></textarea></div>
@@ -1320,7 +1323,7 @@ function renderWorkload(){
         return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);margin-bottom:5px;cursor:pointer;" data-tid="'+item.t.id+'" class="wl-tender-row">'+
           '<span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+s.color+';display:inline-block;"></span>'+
           '<div style="flex:1;min-width:0;">'+
-            '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">'+esc(item.t.no)+(item.t.priority==='high'?' 🔴':'')+'</div>'+
+            '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">'+esc(item.t.no)+(item.t.priority==='high'?' 🚨':'')+'</div>'+
             '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:1px;">'+esc(s.label)+'</div>'+
           '</div>'+
           '<span style="font-size:11px;color:var(--dim)">›</span>'+
@@ -1335,7 +1338,7 @@ function renderWorkload(){
         return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);margin-bottom:5px;cursor:pointer;" data-tid="'+t.id+'" class="wl-tender-row">'+
           (s ? '<span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+s.color+';display:inline-block;"></span>' : '')+
           '<div style="flex:1;min-width:0;">'+
-            '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+'</div>'+
+            '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);">'+esc(t.no)+(t.priority==='high'?' 🚨':'')+'</div>'+
             (s ? '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:1px;">'+esc(s.label)+'</div>' : '')+
           '</div>'+
           '<span style="font-size:11px;color:var(--dim)">›</span>'+
@@ -1481,11 +1484,18 @@ function deletePerson(pid){
     del[pid] = Date.now();
     localStorage.setItem('tt_people_deleted', JSON.stringify(del));
   }catch(e){}
-  // Remove assignments referencing this person
+  // Remove assignments and history entries referencing this person
   tenders.forEach(function(t){
     if(t.stageAssigned){
       Object.keys(t.stageAssigned).forEach(function(k){
         if(t.stageAssigned[k]===pid) delete t.stageAssigned[k];
+      });
+    }
+    if(t.stageAssignHistory){
+      Object.keys(t.stageAssignHistory).forEach(function(sid){
+        t.stageAssignHistory[sid] = t.stageAssignHistory[sid].filter(function(e){
+          return e.pid !== pid;
+        });
       });
     }
   });
@@ -1878,7 +1888,7 @@ function buildActionsModal(){
       '<div class="ai '+tabCls+'" id="ai-'+key.replace(/[^a-z0-9]/gi,'_')+'">'+
         '<div class="ai-icon">'+a.icon+'</div>'+
         '<div class="ai-body" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">'+
-          '<div class="ai-tender">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+(t.isAF?' 🔷':'')+'</div>'+
+          '<div class="ai-tender">'+esc(t.no)+(t.priority==='high'?' 🚨':'')+(t.isAF?' 🔷':'')+'</div>'+
           '<div class="ai-msg">'+a.msg+'</div>'+
           '<div class="ai-sub">'+a.sub+'</div>'+aRow+
         '</div>'+
@@ -1990,7 +2000,7 @@ function openExpiring(){
         '<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:12px;'+
           'background:'+bg+';border:1px solid '+bdr+';margin-bottom:7px;cursor:pointer" onclick="closeM(\'modal-expiring\');openDetail(\''+t.id+'\')">'+
           '<div style="flex:1;min-width:0">'+
-            '<div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+'</div>'+
+            '<div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)">'+esc(t.no)+(t.priority==='high'?' 🚨':'')+'</div>'+
             '<div style="font-size:11px;color:var(--dim);margin-top:2px;font-family:var(--mono)">Validity: '+fmt(t.validity)+'</div>'+
           '</div>'+
           '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:'+col+';white-space:nowrap">'+label+'</div>'+
@@ -2200,7 +2210,8 @@ function render(){
         chip.innerHTML = '<span class="tchip-dot" style="background:' + s.color + ';box-shadow:0 0 4px ' + s.color + '88"></span>'
           + esc(t.no)
           + fileAgeBadge
-          + (t.isAF ? ' <span style="font-size:10px" title="AF File">🔷</span>' : '')
+          + (t.priority==='high' ? ' <span style="font-size:10px" title="Critical">🚨</span>' : '')
+          + (t.isAF ? ' <span style="font-size:10px" title="AF Budget">🔷</span>' : '')
           + (w ? ' <span style="font-size:10px">\u26A0</span>' : '')
           + assigneeBadge
           + (t.tcqRounds > 0 ? ' <span style="font-size:9px;font-weight:800;font-family:var(--mono);background:rgba(251,191,36,.18);color:#fbbf24;border:1px solid rgba(251,191,36,.35);border-radius:4px;padding:1px 5px;" title="TCQ: ' + t.tcqRounds + ' rounds">T' + t.tcqRounds + '</span>' : '');
@@ -2382,7 +2393,7 @@ function openDetail(id){
     (t.priority==='high'?
       '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(185,28,28,.15);'+
         'border:1px solid rgba(239,68,68,.4);border-radius:7px;padding:5px 11px;font-size:12px;'+
-        'font-weight:600;color:#fca5a5">🔴 High Priority</div>':'')+
+        'font-weight:700;color:#fca5a5">🚨 Critical</div>':'')+
     (t.isAF?
       '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(59,158,255,.12);'+
         'border:1px solid rgba(59,158,255,.35);border-radius:7px;padding:5px 11px;font-size:12px;'+
@@ -2532,15 +2543,16 @@ function buildAssignSection(t){
       ? '<div class="assign-history">'+
           '<div class="assign-history-label">History</div>'+
           log.slice(1).map(function(entry){
-            const ep = entry.pid ? personById(entry.pid) : null;
-            const ec = entry.pid ? personColor(entry.pid) : null;
+            const ep   = entry.pid ? personById(entry.pid) : null;
+            const ec   = entry.pid ? personColor(entry.pid) : null;
             const when = entry.assignedAt ? fmtRelTime(entry.assignedAt) : '';
-            const carried = entry.carriedFrom ? ' <span style="font-size:9px;color:var(--dim)">(carried over)</span>' : '';
+            const movedInBadge = entry.movedIn
+              ? ' <span style="font-size:9px;color:var(--dim);font-style:italic;">(stage entered)</span>' : '';
             return '<div class="assign-history-row">'+
               (ep
                 ? '<span class="assign-history-avatar" style="background:'+ec+'">'+esc(initials(ep.name))+'</span>'+
-                  '<span class="assign-history-name">'+esc(ep.name)+carried+'</span>'
-                : '<span class="assign-history-name" style="color:var(--dim)">Unassigned</span>'
+                  '<span class="assign-history-name">'+esc(ep.name)+movedInBadge+'</span>'
+                : '<span class="assign-history-name" style="color:var(--dim)">Unassigned'+movedInBadge+'</span>'
               )+
               (when ? '<span class="assign-history-when">'+when+'</span>' : '')+
             '</div>';
@@ -2682,6 +2694,14 @@ function fillForm(t){
   document.getElementById('f-tcq-rounds').value = t.tcqRounds || 0;
   setPri(t.priority === 'high');
   setAF(t.isAF === true);
+  // Disable toggles for MyTender-synced tenders
+  const isMT = !!(t && t._mt);
+  ['pri-toggle','af-toggle'].forEach(function(id){
+    const el = document.getElementById(id);
+    el.style.pointerEvents = isMT ? 'none' : '';
+    el.style.opacity       = isMT ? '0.55' : '';
+  });
+  document.getElementById('mt-sync-note').style.display = isMT ? '' : 'none';
 }
 
 function clearForm(){
@@ -2692,6 +2712,12 @@ function clearForm(){
   document.getElementById('f-stage').value = 0;
   setPri(false);
   setAF(false);
+  ['pri-toggle','af-toggle'].forEach(function(id){
+    const el = document.getElementById(id);
+    el.style.pointerEvents = '';
+    el.style.opacity       = '';
+  });
+  document.getElementById('mt-sync-note').style.display = 'none';
 }
 
 function buildChips(t){
@@ -2759,8 +2785,12 @@ function saveTender(){
   const fields = {
     no: no,
     workName:  document.getElementById('f-work-name').value.trim(),
-    priority:  document.getElementById('pri-toggle').classList.contains('on') ? 'high' : '',
-    isAF:      document.getElementById('af-toggle').classList.contains('on') || false,
+    priority:  (editId && tenders.find(function(x){return x.id===editId;}) || {})._mt
+                 ? ((tenders.find(function(x){return x.id===editId;}) || {}).priority || '')
+                 : (document.getElementById('pri-toggle').classList.contains('on') ? 'high' : ''),
+    isAF:      (editId && tenders.find(function(x){return x.id===editId;}) || {})._mt
+                 ? !!((tenders.find(function(x){return x.id===editId;}) || {}).isAF)
+                 : (document.getElementById('af-toggle').classList.contains('on') || false),
     notes:     document.getElementById('f-notes').value.trim(),
     fileReceived:  getDP('f-file-received'),
     preBid:    getDP('f-pre-bid'),
@@ -3097,8 +3127,7 @@ async function fbTTPull(silent) {
     tenders.forEach(function(t){
       if (allDeleted[t.id]) return;
       const r = map[t.id];
-      // mt_ entries: always prefer local copy (it has _mt:true and fresher updatedAt)
-      if (t._mt || !r || ts(t) > ts(r)) map[t.id] = t;
+      if (!r || ts(t) > ts(r)) map[t.id] = t;
     });
     const merged = Object.values(map);
     merged.sort(function(a, b){ return ts(b) - ts(a); });
@@ -3158,7 +3187,6 @@ function buildSlim(){
     if(t.stageEnteredAt && Object.keys(t.stageEnteredAt).length) o.sea = t.stageEnteredAt;
     if(t.priority) o.p   = t.priority;
     if(t.isAF)     o.af  = true;
-    if(t._mt)      o.mt  = true;
     if(t.notes)    o.n   = t.notes;
     if(t.tcqRounds) o.tq = t.tcqRounds;
     if(t.fileReceived) o.fr = t.fileReceived;
@@ -3199,7 +3227,6 @@ function expandSlim(t){
     tcq:                t.q   || t.tcq      || '',
     stageAssigned:      t.sa  || t.stageAssigned || {},
     stageAssignHistory: t.sah || t.stageAssignHistory || {},
-    _mt:                !!(t.mt || t._mt),
   };
 }
 
@@ -3903,9 +3930,12 @@ function openSync(){
       var midnight = new Date(); midnight.setHours(0,0,0,0);
       t.stageEnteredAt[toSid] = midnight.getTime();
     }
-    // New stage starts unassigned — assign separately per availability
+    // New stage starts unassigned — log stage entry in history
     if(!t.stageAssigned) t.stageAssigned = {};
     delete t.stageAssigned[toSid];
+    if(!t.stageAssignHistory) t.stageAssignHistory = {};
+    if(!t.stageAssignHistory[toSid]) t.stageAssignHistory[toSid] = [];
+    t.stageAssignHistory[toSid].push({ pid: null, assignedAt: Date.now(), movedIn: true });
     t.updatedAt = Date.now();
     save(); render();
     var toStage = STAGES.find(function(s){ return s.id === toSid; });
@@ -4232,23 +4262,27 @@ function syncMTEntries(activeList) {
   activeList.forEach(function(t) {
     const ttId = 'mt_' + t._fbId;
 
-    // Build a short but recognisable label: prefer Enivida no, then last 6 of tender no, then name prefix
+    // Build label: prefer last 3 of tender no, then enivida no, then name prefix
     const enivida = (t.enividaNumber || '').trim();
     const tNo     = (t.tenderNumber  || '').trim();
-    const label   = enivida || (tNo ? tNo.slice(-3) : '') || (t.nameOfWork || '').slice(0, 10) || '?';
+    const label   = (tNo ? tNo.slice(-3) : '') || enivida || (t.nameOfWork || '').slice(0, 10) || '?';
 
     const notes = [t.department, t.tenderMode, t.tenderType,
                    t.valueInclGST ? '₹'+Number(t.valueInclGST).toLocaleString('en-IN') : '']
                   .filter(Boolean).join(' · ');
 
+    const isCrit = t.isCritical === 'Yes';
+    const isAF   = t.budgetType === 'AF';
+
     const existing = tenders.find(function(x){ return x.id === ttId; });
     if (existing) {
       // Update mutable fields so edits in MyTender are reflected here
-      existing.no        = label;
-      existing.workName  = t.nameOfWork || '';
-      existing.notes     = notes;
-      existing._mt       = true;
-      existing.updatedAt = Date.now(); // keep local version newer than Firebase copy
+      existing.no       = label;
+      existing.workName = t.nameOfWork || '';
+      existing.notes    = notes;
+      existing.priority = isCrit ? 'high' : '';
+      existing.isAF     = isAF;
+      existing._mt      = true;
       return;
     }
 
@@ -4259,9 +4293,8 @@ function syncMTEntries(activeList) {
       notes:         notes,
       stages:        [0],
       stageEnteredAt:{ 0: (function(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })() },
-      updatedAt:     Date.now(),
-      priority:      'normal',
-      isAF:          false,
+      priority:      isCrit ? 'high' : '',
+      isAF:          isAF,
       owner:         null,
       stageAssigned: {},
       _mt:           true
@@ -4269,9 +4302,7 @@ function syncMTEntries(activeList) {
   });
 
   save();
-  try { render(); } catch(e) { console.error('MT render error:', e); }
-  // Belt-and-suspenders: re-render after any pending microtasks settle
-  setTimeout(function(){ try { render(); } catch(e){} }, 0);
+  render();
 }
 
 // ── INIT ──────────────────────────────────────────────
