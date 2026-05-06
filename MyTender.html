@@ -100,7 +100,7 @@
         /* ── DASHBOARD ── */
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 13px;
             margin-bottom: 10px;
         }
@@ -130,6 +130,7 @@
         .stat-card.s-onetime   { border-color: #00897b; }
         .stat-card.s-shutdown  { border-color: #e53935; }
         .stat-card.s-af        { border-color: #1e88e5; }
+        .stat-card.s-critical  { border-color: #b71c1c; }
 
         .stat-card .num { font-size: 36px; font-weight: 700; line-height: 1.1; }
         .stat-card.s-total     .num { color: #757575; }
@@ -141,6 +142,7 @@
         .stat-card.s-onetime   .num { color: #00897b; }
         .stat-card.s-shutdown  .num { color: #e53935; }
         .stat-card.s-af        .num { color: #1e88e5; }
+        .stat-card.s-critical  .num { color: #b71c1c; }
 
         .stat-card .lbl {
             font-size: 11px;
@@ -251,6 +253,7 @@
         .tag-shutdown { background: #fce8e6; color: #c5221f; }
         .tag-af       { background: #e8f0fe; color: #1557b0; }
         .tag-split    { background: #f3e8fd; color: #7b1fa2; }
+        .tag-critical { background: #b71c1c; color: #fff; font-weight: 900; letter-spacing: 0.3px; }
 
         .badge {
             display: inline-block; padding: 3px 9px; white-space: nowrap;
@@ -513,7 +516,8 @@
         /* ── UTILS ── */
         .hidden { display: none !important; }
 
-        @media (max-width: 960px) { .dashboard { grid-template-columns: repeat(3,1fr); } }
+        @media (max-width: 1100px) { .dashboard { grid-template-columns: repeat(3,1fr); } }
+        @media (max-width: 960px)  { .dashboard { grid-template-columns: repeat(3,1fr); } }
         @media (max-width: 600px) {
             .dashboard { grid-template-columns: repeat(2,1fr); }
             .form-grid { grid-template-columns: 1fr; }
@@ -585,6 +589,10 @@
             <div class="stat-card s-cancelled">
                 <div class="num" id="c-cancelled">0</div>
                 <div class="lbl">Cancelled</div>
+            </div>
+            <div class="stat-card s-critical" style="cursor:pointer;" onclick="filterCritical()" title="Click to filter critical tenders">
+                <div class="num" id="c-critical">0</div>
+                <div class="lbl">🚨 Critical</div>
             </div>
         </div>
         <!-- Dashboard Row 2 -->
@@ -671,6 +679,10 @@
             </select>
             <select class="filter" id="f-dept" onchange="applyFilters()">
                 <option value="">All Departments</option>
+            </select>
+            <select class="filter" id="f-critical" onchange="applyFilters()">
+                <option value="">All</option>
+                <option value="Yes">🚨 Critical Only</option>
             </select>
             <button class="btn btn-outline" onclick="clearFilters()">✕ Clear</button>
             <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
@@ -828,6 +840,13 @@
                 <div class="field">
                     <label>Tender Split</label>
                     <select id="m-split">
+                        <option>No</option>
+                        <option>Yes</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Critical</label>
+                    <select id="m-critical">
                         <option>No</option>
                         <option>Yes</option>
                     </select>
@@ -1115,11 +1134,12 @@ function rebuildFilters() {
 }
 
 function applyFilters() {
-    const q    = get('search-input').toLowerCase();
-    const stat = document.getElementById('f-status').value;
-    const fy   = document.getElementById('f-fy').value;
-    const mode = document.getElementById('f-mode').value;
-    const dept = document.getElementById('f-dept').value;
+    const q        = get('search-input').toLowerCase();
+    const stat     = document.getElementById('f-status').value;
+    const fy       = document.getElementById('f-fy').value;
+    const mode     = document.getElementById('f-mode').value;
+    const dept     = document.getElementById('f-dept').value;
+    const critical = document.getElementById('f-critical').value;
 
     const rows = tenders.filter(t => {
         if (q && ![
@@ -1127,16 +1147,17 @@ function applyFilters() {
             t.fileHandler, t.tenderMode, t.tenderType, t.priceType,
             t.nature, t.status, t.financialYear, t.remarks,
             t.allotmentDate, t.resultDate, t.shutdownJob, t.budgetType, t.tenderSplit,
-            t.prNo, t.woNumber, t.woDate, t.vendorName,
+            t.prNo, t.woNumber, t.woDate, t.vendorName, t.isCritical,
             t.finalLandedCost != null ? String(t.finalLandedCost) : '',
             t.valueInclGST    != null ? String(t.valueInclGST)    : '',
             t.valueExclGST    != null ? String(t.valueExclGST)    : '',
             t.leadDays        != null ? String(t.leadDays)        : ''
         ].some(v => (v||'').toLowerCase().includes(q))) return false;
-        if (stat && t.status !== stat)       return false;
-        if (fy   && t.financialYear !== fy)  return false;
-        if (mode && t.tenderMode !== mode)   return false;
-        if (dept && t.department !== dept)   return false;
+        if (stat     && t.status      !== stat)     return false;
+        if (fy       && t.financialYear !== fy)     return false;
+        if (mode     && t.tenderMode  !== mode)     return false;
+        if (dept     && t.department  !== dept)     return false;
+        if (critical && t.isCritical  !== critical) return false;
         return true;
     });
 
@@ -1175,6 +1196,7 @@ function updateDashboard() {
     document.getElementById('c-awarded-cost').textContent = awardedCost ? fmtCr(awardedCost) : '';
 
     document.getElementById('c-cancelled').textContent = rows.filter(t=>t.status==='Cancelled').length;
+    document.getElementById('c-critical').textContent  = rows.filter(t=>t.isCritical==='Yes').length;
 
     const arcRows      = rows.filter(t=>t.nature==='ARC');
     const onetimeRows  = rows.filter(t=>t.nature==='One-Time');
@@ -1259,7 +1281,7 @@ function renderTable(rows) {
         return `<tr>
             <td style="color:#c5c8cf;font-size:11px;width:32px;">${i+1}</td>
             <td style="min-width:200px;max-width:280px;">
-                <div class="cell-main">${esc(t.nameOfWork)}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
+                <div class="cell-main">${esc(t.nameOfWork)}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
                 <div class="cell-sub">${[t.prNo, t.enividaNumber, t.tenderNumber].filter(Boolean).map(esc).join(' · ') || ''}</div>
             </td>
             <td style="white-space:nowrap;">${dim(esc(t.department))}</td>
@@ -1331,6 +1353,7 @@ function openEdit(id) {
     set('m-shutdown',     t.shutdownJob);
     set('m-budget-type',  t.budgetType || 'Revenue');
     set('m-split',        t.tenderSplit);
+    set('m-critical',     t.isCritical || 'No');
     set('m-allot',        t.allotmentDate);
     set('m-status',       t.status);
     set('m-result-date',  t.resultDate);
@@ -1363,6 +1386,7 @@ function resetForm() {
     set('m-shutdown',    'No');
     set('m-budget-type', 'Revenue');
     set('m-split',       'No');
+    set('m-critical',    'No');
     set('m-landed',      '');
     set('m-status',      'In Progress');
     document.getElementById('lead-disp').textContent = '— days';
@@ -1427,6 +1451,7 @@ async function saveTender() {
         shutdownJob:     get('m-shutdown'),
         budgetType:      get('m-budget-type'),
         tenderSplit:     get('m-split'),
+        isCritical:      get('m-critical'),
         allotmentDate:   allotDate,
         leadDays:        allotDate ? calcLeadDays(allotDate, woDate) : null,
         financialYear:   getFY(allotDate),
@@ -1513,6 +1538,13 @@ function clearFilters() {
     document.getElementById('f-fy').value = '';
     document.getElementById('f-mode').value = '';
     document.getElementById('f-dept').value = '';
+    document.getElementById('f-critical').value = '';
+    applyFilters();
+}
+
+function filterCritical() {
+    document.getElementById('f-critical').value = 'Yes';
+    document.getElementById('f-status').value = '';
     applyFilters();
 }
 
@@ -1530,6 +1562,7 @@ const IMPORT_FIELDS = [
     { key:'shutdownJob',     label:'Shutdown Job',            aliases:['shutdown job','shutdown','is shutdown','shutdownjob'] },
     { key:'budgetType',      label:'Budget Type',             aliases:['budget type','budget','af job','af','budgettype','fund type'] },
     { key:'tenderSplit',     label:'Tender Split',            aliases:['tender split','split','is split','tendersplit'] },
+    { key:'isCritical',     label:'Critical',                aliases:['critical','is critical','priority','iscritical'] },
     { key:'allotmentDate',   label:'Allotment Date',          aliases:['allotment date','date of allotment','allotment','start date','date allotted','allotmentdate'] },
     { key:'status',          label:'Status',                  aliases:['status','tender status','current status'] },
     { key:'resultDate',      label:'Result Date',             aliases:['result date','award date','cancellation date','result','awarded date','resultdate'] },
@@ -1831,6 +1864,7 @@ async function confirmImport() {
             shutdownJob:     normalizeYesNo(rec.shutdownJob),
             budgetType:      budget,
             tenderSplit:     normalizeYesNo(rec.tenderSplit),
+            isCritical:      normalizeYesNo(rec.isCritical),
             allotmentDate:   allotDate,
             status:          status,
             resultDate:      resultDate,
@@ -2033,7 +2067,7 @@ function exportExcel() {
     const headers = [
         'Name of Work', 'Enivida No.', 'Tender No.', 'PR No.', 'Department',
         'Tender Mode', 'Tender Type', 'Price Type', 'Nature', 'Budget Type',
-        'Shutdown Job', 'Tender Split', 'Status', 'Allotment Date', 'Lead Days',
+        'Shutdown Job', 'Tender Split', 'Critical', 'Status', 'Allotment Date', 'Lead Days',
         'Result Date', 'WO Number', 'WO Date', 'Vendor Name',
         'Est. Value (incl. GST)', 'Est. Value (excl. GST)', 'Final Landed Cost',
         'File Handler', 'Financial Year', 'Remarks'
@@ -2052,6 +2086,7 @@ function exportExcel() {
         t.budgetType      || '',
         t.shutdownJob     || '',
         t.tenderSplit     || '',
+        t.isCritical      || '',
         t.status          || '',
         t.allotmentDate   || '',
         t.leadDays != null ? t.leadDays : '',
