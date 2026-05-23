@@ -1493,9 +1493,11 @@ function deletePerson(pid){
     }
     if(t.stageAssignHistory){
       Object.keys(t.stageAssignHistory).forEach(function(sid){
-        t.stageAssignHistory[sid] = t.stageAssignHistory[sid].filter(function(e){
-          return e.pid !== pid;
-        });
+        if(Array.isArray(t.stageAssignHistory[sid])){
+          t.stageAssignHistory[sid] = t.stageAssignHistory[sid].filter(function(e){
+            return e.pid !== pid;
+          });
+        }
       });
     }
   });
