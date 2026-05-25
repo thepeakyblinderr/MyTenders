@@ -1454,7 +1454,7 @@ async function saveTender() {
         isCritical:      get('m-critical'),
         allotmentDate:   allotDate,
         leadDays:        allotDate ? calcLeadDays(allotDate, woDate) : null,
-        financialYear:   getFY(allotDate),
+        financialYear:   getFY(woDate || allotDate),
         status:          get('m-status'),
         resultDate:      get('m-result-date'),
         prNo:            get('m-pr-no'),
@@ -1877,7 +1877,7 @@ async function confirmImport() {
             finalLandedCost: parseFloat(rec.finalLandedCost) || null,
             remarks:         String(rec.remarks || '').trim(),
             leadDays:        allotDate ? calcLeadDays(allotDate, woDate) : null,
-            financialYear:   getFY(allotDate),
+            financialYear:   getFY(woDate || allotDate),
             createdAt:       Date.now(),
         };
 
