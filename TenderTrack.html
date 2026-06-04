@@ -576,7 +576,7 @@ if('serviceWorker' in navigator){
   <div class="hdr-row1">
     <div class="brand"><div class="brand-pip">📋</div>TenderTrack</div>
     <a href="MyTender.html" class="hdr-icon-btn" title="MyTender Database" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--dim)'">🗃<span class="hdr-btn-txt"> Database</span></a>
-    <button id="btn-mt-sync" class="hdr-icon-btn" onclick="loadMTTenders(true)" title="Sync tenders from MyTender">🔄<span class="hdr-btn-txt" id="btn-mt-sync-txt"> Sync DB</span></button>
+    <button id="btn-mt-sync" class="hdr-icon-btn" onclick="openFbConnect()" title="MyTender Database connection"><span id="db-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;display:inline-block;flex-shrink:0;transition:background .3s;"></span><span class="hdr-btn-txt"><span id="btn-mt-sync-txt"> Not connected</span></span></button>
     <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" title="Toggle theme">🌙</button>
     <button class="hdr-icon-btn" onclick="openWorkload()" title="Workload">📊<span class="hdr-btn-txt"> Workload</span></button>
     <button class="btn-theme" id="btn-profile" onclick="openProfileSwitch()" title="Switch profile" style="font-size:13px;padding:6px 10px;">👤</button>
@@ -775,6 +775,26 @@ if('serviceWorker' in navigator){
     </div>
     <div style="font-size:13px;color:var(--dim);margin-bottom:18px;" id="profile-modal-sub">Select your profile to continue</div>
     <div id="profile-list"></div>
+  </div>
+</div>
+
+<!-- FIREBASE CONNECT -->
+<div class="overlay" id="modal-fb-connect">
+  <div class="modal" style="max-width:420px">
+    <div class="mh">
+      <div class="mt">🔗 Connect MyTender Database</div>
+      <button class="xbtn" onclick="closeM('modal-fb-connect')">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--dim);margin:0 0 16px;line-height:1.6;">Enter your Firebase Realtime Database URL. This is shared with MyTender — if you've already set it there, it will be pre-filled.</p>
+    <label class="fl">Firebase Database URL</label>
+    <input class="fi" id="fb-url-input" placeholder="https://your-project-default-rtdb.firebaseio.com" style="margin-bottom:16px;font-size:13px;font-family:var(--mono);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div style="display:flex;gap:8px;">
+      <button class="btn-c" onclick="closeM('modal-fb-connect')">Cancel</button>
+      <button class="btn-s" style="flex:1;" onclick="saveFbUrl()">Connect &amp; Sync</button>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+      <button onclick="disconnectFb()" style="background:none;border:none;color:#f87171;font-size:12px;cursor:pointer;padding:0;font-family:var(--sans);">Disconnect / Remove URL</button>
+    </div>
   </div>
 </div>
 
@@ -4215,27 +4235,47 @@ function initProfile(){
 // exactly like native chips — moveable, assignable, editable.
 // Removes entries when tender is no longer "In Progress" in MyTender.
 
+let _lastSyncAt = 0;
+let _lastSyncCount = 0;
+
+function updateDbDot(state) {
+  // state: 'ok' | 'error' | 'syncing' | 'none'
+  const dot = document.getElementById('db-dot');
+  const txt = document.getElementById('btn-mt-sync-txt');
+  if (!dot) return;
+  const colors = { ok:'#22c55e', error:'#f87171', syncing:'#fbbf24', none:'#6b7280' };
+  dot.style.background = colors[state] || colors.none;
+  if (state === 'syncing') { if(txt) txt.textContent = ' Syncing…'; return; }
+  if (state === 'none')    { if(txt) txt.textContent = ' Not connected'; return; }
+  if (state === 'error')   { if(txt) txt.textContent = ' Error'; return; }
+  // ok — show count + relative time
+  const diff = Date.now() - _lastSyncAt;
+  const ago = diff < 10000 ? 'just now' : diff < 60000 ? Math.round(diff/1000)+'s ago'
+              : diff < 3600000 ? Math.round(diff/60000)+'m ago' : Math.round(diff/3600000)+'h ago';
+  if(txt) txt.textContent = ' ' + _lastSyncCount + ' · ' + ago;
+}
+
+// Refresh the "X ago" text every 30s without re-fetching
+setInterval(function(){ if(_lastSyncAt) updateDbDot('ok'); }, 30000);
+
 async function loadMTTenders(manual) {
-  let url = localStorage.getItem('mytenders_db_url');
+  const url = localStorage.getItem('mytenders_db_url');
   if (!url) {
-    if (!manual) return; // don't prompt on auto-calls
-    url = prompt('Enter your Firebase Realtime Database URL to sync MyTender data:\n(e.g. https://your-project-default-rtdb.firebaseio.com)');
-    if (!url) return;
-    url = url.trim().replace(/\/$/, '');
-    localStorage.setItem('mytenders_db_url', url);
+    if (manual) openFbConnect();
+    updateDbDot('none');
+    return;
   }
   const btn = document.getElementById('btn-mt-sync');
-  const btnTxt = document.getElementById('btn-mt-sync-txt');
-  function setBtnText(t){ if(btnTxt) btnTxt.textContent = t; }
   if (btn) btn.disabled = true;
-  setBtnText(' Syncing…');
+  updateDbDot('syncing');
   try {
     const res  = await fetch(url + '/tenders.json');
     if (!res.ok) throw new Error('HTTP ' + res.status + ' — check Firebase DB Rules (read must be true)');
     const data = await res.json();
     if (data === null) {
       if (manual) toast('No tenders found in Firebase (database may be empty)');
-      setBtnText(' (0)'); if (btn) btn.disabled = false;
+      _lastSyncAt = Date.now(); _lastSyncCount = 0;
+      updateDbDot('ok'); if (btn) btn.disabled = false;
       syncMTEntries([]);
       return;
     }
@@ -4243,13 +4283,39 @@ async function loadMTTenders(manual) {
       .filter(function(kv){ return kv[1] && kv[1].status === 'In Progress'; })
       .map(function(kv){ return Object.assign({ _fbId: kv[0] }, kv[1]); });
     syncMTEntries(active);
-    setBtnText(' (' + active.length + ')'); if (btn) btn.disabled = false;
+    _lastSyncAt = Date.now(); _lastSyncCount = active.length;
+    updateDbDot('ok'); if (btn) btn.disabled = false;
     if (manual) toast('Synced ' + active.length + ' In Progress tender(s) ✓');
   } catch(e) {
     console.error('MT sync error:', e);
     toast('⚠ Sync failed: ' + e.message);
-    setBtnText(' Error'); if (btn) btn.disabled = false;
+    updateDbDot('error'); if (btn) btn.disabled = false;
   }
+}
+
+function openFbConnect() {
+  const cur = localStorage.getItem('mytenders_db_url') || '';
+  const inp = document.getElementById('fb-url-input');
+  if(inp) inp.value = cur;
+  openM('modal-fb-connect');
+}
+
+function saveFbUrl() {
+  const inp = document.getElementById('fb-url-input');
+  const url = (inp ? inp.value : '').trim().replace(/\/$/, '');
+  if (!url) { toast('Enter a valid Firebase URL', true); return; }
+  localStorage.setItem('mytenders_db_url', url);
+  closeM('modal-fb-connect');
+  loadMTTenders(true);
+}
+
+function disconnectFb() {
+  if (!confirm('Remove Firebase connection? MyTender tenders will be removed from the board.')) return;
+  localStorage.removeItem('mytenders_db_url');
+  closeM('modal-fb-connect');
+  syncMTEntries([]);
+  updateDbDot('none');
+  toast('Disconnected');
 }
 
 function syncMTEntries(activeList) {
@@ -4332,6 +4398,8 @@ if(_initCfg.token){
 }
 initProfile();
 
+// Show initial dot state before first fetch completes
+updateDbDot(localStorage.getItem('mytenders_db_url') ? 'syncing' : 'none');
 // Load MyTender "In Progress" items and refresh every 60s
 loadMTTenders();
 setInterval(loadMTTenders, 60000);
