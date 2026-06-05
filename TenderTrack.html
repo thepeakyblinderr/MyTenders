@@ -955,7 +955,7 @@ function stageAge(t, sid){
 
 // ── FOLLOW-UP ─────────────────────────────────────────
 function getFU(){ try{ return JSON.parse(localStorage.getItem(FU_KEY)||'{}'); }catch(e){ return {}; } }
-function saveFU(obj){ localStorage.setItem(FU_KEY, JSON.stringify(obj)); }
+function saveFU(obj){ localStorage.setItem(FU_KEY, JSON.stringify(obj)); scheduleFBPush(); }
 
 function getFUFor(tid){
   const fu = getFU();
@@ -3103,6 +3103,7 @@ async function fbTTPush() {
       deleted:      JSON.parse(localStorage.getItem('tt_deleted')        || '{}'),
       peopleDeleted:JSON.parse(localStorage.getItem('tt_people_deleted') || '{}'),
       mtStages:     getMTStages(),
+      followUp:     getFU(),
       syncedAt:     pushTime
     });
     localStorage.setItem('tt_last_push', String(pushTime));
@@ -3171,6 +3172,17 @@ async function fbTTPull(silent) {
       const localMT = getMTStages();
       const mergedMT = Object.assign({}, remote.mtStages, localMT);
       localStorage.setItem(MT_STAGES_KEY, JSON.stringify(mergedMT));
+    }
+
+    // Merge followUp — merge by tender ID, keep whichever was set most recently
+    if (remote.followUp) {
+      const localFU = getFU();
+      const mergedFU = Object.assign({}, remote.followUp);
+      Object.keys(localFU).forEach(function(tid) {
+        const r = mergedFU[tid];
+        if (!r || (localFU[tid].setOn || 0) >= (r.setOn || 0)) mergedFU[tid] = localFU[tid];
+      });
+      localStorage.setItem(FU_KEY, JSON.stringify(mergedFU));
     }
 
     tenders = merged;
