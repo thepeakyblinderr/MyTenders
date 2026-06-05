@@ -90,7 +90,7 @@ header .page-wrap{display:flex;flex-direction:column;}
   .fl{font-size:11px;}
   .btn-s,.btn-c,.btn-del{font-size:15px;padding:11px 24px;}
   .btn-add{padding:9px 20px;font-size:14px;}
-  .btn-sync,.btn-today,.btn-theme,.btn-workload{padding:8px 14px;font-size:13px;}
+  .btn-today,.btn-theme,.btn-workload{padding:8px 14px;font-size:13px;}
   .brand{font-size:17px;}
   .brand-pip{width:32px;height:32px;font-size:16px;}
   .hdr-search{font-size:15px;padding:10px 15px;}
@@ -212,11 +212,6 @@ header{position:sticky;top:0;z-index:50;border-bottom:2px solid var(--accent)!im
 .sync-dot.err{background:#f87171;box-shadow:0 0 6px #f8717177;}
 .sync-dot.busy{background:#fbbf24;box-shadow:0 0 6px #fbbf2477;animation:pulse .8s infinite;}
 .sync-dot.pending{background:#fb923c;box-shadow:0 0 4px #fb923c66;animation:pulse 1.5s infinite;}
-.btn-sync{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border2);
-  border-radius:9px;padding:7px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:500;
-  cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;transition:border-color .15s,background .2s;}
-.btn-sync.ok{color:var(--accent);border-color:rgba(77,128,230,.4);}
-
 /* Today btn */
 .btn-today{position:relative;background:var(--surface);border:1px solid var(--border2);
   border-radius:9px;padding:7px 13px;color:var(--dim);font-family:var(--sans);font-size:13px;font-weight:600;
@@ -584,7 +579,7 @@ if('serviceWorker' in navigator){
   </div>
   <div class="hdr-row2">
     <input class="hdr-search" id="search" placeholder="Search tender, stage or amount…" oninput="render()">
-    <span class="sync-dot" id="sync-dot" style="display:none;"></span>
+    <span class="sync-dot" id="sync-dot" title="Firebase sync status"></span>
     <button class="btn-today" id="btn-today" onclick="openActions()">
       Today<span class="today-badge" id="today-badge">0</span>
     </button>
@@ -694,17 +689,6 @@ if('serviceWorker' in navigator){
       <button class="xbtn" onclick="closeM('modal-actions')">×</button>
     </div>
     <div id="actions-body"></div>
-  </div>
-</div>
-
-<!-- SYNC -->
-<div class="overlay" id="modal-sync">
-  <div class="modal">
-    <div class="mh">
-      <div class="mt">☁ Gist Sync</div>
-      <button class="xbtn" onclick="closeM('modal-sync')">×</button>
-    </div>
-    <div id="sync-body"></div>
   </div>
 </div>
 
@@ -1024,7 +1008,6 @@ function saveFollowUp(){
   // Rebuild actions modal if it's already open
   const ma = document.getElementById('modal-actions');
   if(ma && ma.classList.contains('open')) buildActionsModal();
-  schedulePush();
 }
 
 function clearFollowUp(){
@@ -1037,7 +1020,6 @@ function clearFollowUp(){
   render(); refreshBadge();
   const ma = document.getElementById('modal-actions');
   if(ma && ma.classList.contains('open')) buildActionsModal();
-  schedulePush();
 }
 
 // ── STORAGE ───────────────────────────────────────────
@@ -1102,7 +1084,6 @@ function snoozeItem(snoozeKey){
   // If actions modal open, rebuild it
   const m = document.getElementById('modal-actions');
   if(m && m.classList.contains('open')) buildActionsModal();
-  schedulePush();
 }
 
 // ── FILTER ────────────────────────────────────────────
@@ -1490,7 +1471,6 @@ function addPerson(){
   setNewPersonRole('officer');
   renderPeopleList();
   render();
-  schedulePush();
   toast(name+' added ✓');
 }
 
@@ -1522,7 +1502,6 @@ function deletePerson(pid){
     }
   });
   save(); renderPeopleList(); render();
-  schedulePush();
   toast('Removed');
 }
 
@@ -1626,7 +1605,6 @@ function assignPerson(pid){
   if(det && det.classList.contains('open')){ openDetail(_assignTid); }
   const pName = pid ? (personById(pid)||{name:'?'}).name : 'Unassigned';
   toast('Assigned: '+pName);
-  schedulePush();
 }
 
 // ── BADGE ─────────────────────────────────────────────
@@ -2082,8 +2060,7 @@ function openStagePicker(tid, anchorEl){
         const mn = new Date(); mn.setHours(0,0,0,0);
         t.stageEnteredAt[sid] = mn.getTime();
         t.updatedAt = Date.now();
-        save(); render(); schedulePush();
-        toast('Added: '+sg(sid).label+' ✓');
+        save(); render();        toast('Added: '+sg(sid).label+' ✓');
       }
       closeStagePicker();
     });
@@ -2528,8 +2505,7 @@ function openDetail(id){
       if(!tender) return;
       tender.owner = (val === '__none__') ? '' : val;
       tender.updatedAt = Date.now();
-      save(); render(); schedulePush();
-      const newOwner = tender.owner ? personById(tender.owner) : null;
+      save(); render();      const newOwner = tender.owner ? personById(tender.owner) : null;
       toast(newOwner ? 'Owner set to ' + newOwner.name + ' ✓' : 'Owner removed');
       openDetail(id); // refresh
     });
@@ -2765,7 +2741,6 @@ function removeStage(id, sid){
   // NOTE: deliberately preserve stageAssigned[sid] and stageAssignHistory[sid]
   // so assignment history survives stage removal
   save(); render(); buildChips(t); toast('Stage removed');
-  schedulePush();
 }
 
 function removeStageDetail(id, sid){
@@ -2797,7 +2772,6 @@ function removeStageDetail(id, sid){
     container.innerHTML = s_list.join('');
   }
   toast('Stage removed');
-  schedulePush();
 }
 
 function saveTender(){
@@ -2854,7 +2828,6 @@ function saveTender(){
     toast('Tender added ✓');
   }
   save(); render(); closeM('modal-add');
-  schedulePush();
 }
 
 // ── CALENDAR DATE PICKER ─────────────────────────────
@@ -2998,8 +2971,7 @@ function adjTCQDetail(tid, delta){
   if(!t) return;
   t.tcqRounds = Math.max(0, (t.tcqRounds||0) + delta);
   t.updatedAt = Date.now();
-  save(); render(); openDetail(tid); schedulePush();
-}
+  save(); render(); openDetail(tid);}
 
 // ── PRIORITY TOGGLE ───────────────────────────────────
 function togglePri(){ setPri(!document.getElementById('pri-toggle').classList.contains('on')); }
@@ -3038,7 +3010,6 @@ function doDelete(id){
     localStorage.setItem('tt_deleted', JSON.stringify(deleted));
   } catch(e){}
   save(); render(); closeM('modal-del'); toast('Deleted');
-  schedulePush();
 }
 
 // ── MODAL HELPERS ─────────────────────────────────────
@@ -3177,26 +3148,10 @@ async function fbTTPull(silent) {
 }
 
 // ── GOOGLE SHEETS SYNC ────────────────────────────────
-// ── SYNC — GitHub Gist + Export/Import ──────────────
-// Uses GitHub Gist API: standard fetch, proper CORS, free.
-// Setup: create a GitHub Personal Access Token with "gist" scope only.
-// https://github.com/settings/tokens/new?scopes=gist&description=TenderTrack
-
-const SYNC_KEY  = 'tt_sync_cfg';
-const SYNC_FILE = 'tendertrack-data.json';
-
-function getSyncCfg(){
-  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; }
-}
-function saveSyncCfg(cfg){ localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); }
-
 function setSyncDot(state){
   const dot = document.getElementById('sync-dot');
-  const btn  = document.getElementById('btn-sync');
-  if(!dot||!btn) return;
+  if(!dot) return;
   dot.className = 'sync-dot' + (state!=='idle'?' '+state:'');
-  const cfg = getSyncCfg();
-  btn.className  = 'btn-sync' + (cfg.token&&state==='ok'?' ok':'');
 }
 
 // ── Slim/expand payload (same field mapping) ──────────
@@ -3250,607 +3205,6 @@ function expandSlim(t){
     stageAssigned:      t.sa  || t.stageAssigned || {},
     stageAssignHistory: t.sah || t.stageAssignHistory || {},
   };
-}
-
-// ── Gist API ──────────────────────────────────────────
-async function gistReq(method, path, body){
-  const cfg = getSyncCfg();
-  if(!cfg.token) throw new Error('No token');
-  const opts = {
-    method: method,
-    headers: {
-      'Authorization': 'Bearer ' + cfg.token,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28'
-    }
-  };
-  if(body) opts.body = JSON.stringify(body);
-  const res = await fetch('https://api.github.com' + path, opts);
-  if(!res.ok){
-    const err = await res.json().catch(function(){ return {}; });
-    throw new Error((err.message || res.statusText) + ' (' + res.status + ')');
-  }
-  return res.status === 204 ? {} : res.json();
-}
-
-// ── Auto-push (debounced 8s) ──────────────────────────
-let _pushTimer = null;
-function schedulePush(){
-  const cfg = getSyncCfg();
-  if(!cfg.token || !cfg.gistId) return;
-  clearTimeout(_pushTimer);
-  const dot = document.getElementById('sync-dot');
-  if(dot) dot.className = 'sync-dot pending';
-  _pushTimer = setTimeout(function(){ syncPush(true); }, 8000);
-}
-
-// ── Find existing Gist by name (for new devices) ──────
-// ── Gist ID discovery ────────────────────────────────
-async function findOrCreateGistId(){
-  const cfg = getSyncCfg();
-  if(!cfg.token) return null;
-  if(cfg.gistId) return cfg.gistId;
-  // Search GitHub
-  try{
-    const r = await fetch('https://api.github.com/gists?per_page=50',{
-      headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
-    });
-    if(!r.ok) return null;
-    const list = await r.json();
-    const found = list.find(function(g){ return g.files&&g.files[SYNC_FILE]; });
-    if(found){ cfg.gistId=found.id; saveSyncCfg(cfg); return cfg.gistId; }
-  }catch(e){ console.warn('findGist:',e); }
-  return null;
-}
-
-// ── Push (merge-first) ────────────────────────────────
-async function syncPush(silent){
-  const cfg = getSyncCfg();
-  if(!cfg.token){ if(!silent) toast('Set up sync first',true); return; }
-
-  // No Gist yet — create one
-  if(!cfg.gistId){
-    setSyncDot('busy');
-    try{
-      const files={}; files[SYNC_FILE]={content:JSON.stringify({tenders:buildSlim(),people:getPeople(),deleted:JSON.parse(localStorage.getItem('tt_deleted')||'{}')})};
-      const res = await gistReq('POST','/gists',{description:'TenderTrack data',public:false,files:files});
-      cfg.gistId=res.id; saveSyncCfg(cfg);
-      localStorage.setItem('tt_last_sync',Date.now().toString());
-      setSyncDot('ok'); if(!silent) toast('Pushed ✓');
-    }catch(e){ setSyncDot('err'); if(!silent) toast('Push failed: '+e.message,true); console.warn(e); }
-    return;
-  }
-
-  // Merge-push
-  setSyncDot('busy');
-  try{
-    const localDeleted = JSON.parse(localStorage.getItem('tt_deleted')||'{}');
-    // Read remote
-    const res  = await gistReq('GET','/gists/'+cfg.gistId);
-    const file = res.files && res.files[SYNC_FILE];
-    let remoteTenders=[], remotePeople=[], remoteDeleted={};
-    if(file){
-      let raw=file.content;
-      if(file.truncated){ const r2=await fetch(file.raw_url); raw=await r2.text(); }
-      try{
-        const p=JSON.parse(raw);
-        if(Array.isArray(p)){ remoteTenders=p.map(expandSlim); }
-        else if(p&&Array.isArray(p.tenders)){ remoteTenders=p.tenders.map(expandSlim); remotePeople=p.people||[]; remoteDeleted=p.deleted||{};
-          // Merge remote people tombstones locally
-          const rPplDel=p.peopleDeleted||{};
-          if(Object.keys(rPplDel).length){
-            const lPplDel=JSON.parse(localStorage.getItem('tt_people_deleted')||'{}');
-            localStorage.setItem('tt_people_deleted',JSON.stringify(Object.assign({},lPplDel,rPplDel)));
-          }
-        }
-      }catch(e){}
-    }
-    // Merge deletions
-    const allDeleted=Object.assign({},remoteDeleted,localDeleted);
-    localStorage.setItem('tt_deleted',JSON.stringify(allDeleted));
-    // Merge tenders
-    function ts(t){ if(t.updatedAt&&t.updatedAt>0) return t.updatedAt; const v=Object.values(t.stageEnteredAt||{}).filter(function(x){return x>0;}); return v.length?Math.max.apply(null,v):0; }
-    const map={};
-    remoteTenders.forEach(function(t){ if(!allDeleted[t.id]) map[t.id]=t; });
-    tenders.forEach(function(t){ if(allDeleted[t.id]) return; const r=map[t.id]; if(!r||ts(t)>ts(r)) map[t.id]=t; });
-    const merged=Object.values(map); merged.sort(function(a,b){return ts(b)-ts(a);});
-    // Merge people — respect deletion tombstones
-    const pplDel = JSON.parse(localStorage.getItem('tt_people_deleted')||'{}');
-    const pm={}; getPeople().forEach(function(p){if(!pplDel[p.id])pm[p.id]=p;});
-    remotePeople.forEach(function(p){if(!pm[p.id]&&!pplDel[p.id])pm[p.id]=p;});
-    const mergedPeople=Object.values(pm);
-    tenders=merged; save(); savePeople(mergedPeople); render();
-    // Write back
-    const files2={}; const _pplDel=JSON.parse(localStorage.getItem('tt_people_deleted')||'{}');
-    files2[SYNC_FILE]={content:JSON.stringify({tenders:buildSlim(),people:mergedPeople,deleted:allDeleted,peopleDeleted:_pplDel})};
-    await gistReq('PATCH','/gists/'+cfg.gistId,{files:files2});
-    localStorage.setItem('tt_last_sync',Date.now().toString());
-    setSyncDot('ok'); if(!silent) toast('Synced ✓');
-  }catch(e){ setSyncDot('err'); if(!silent) toast('Sync failed: '+e.message,true); console.warn(e); }
-}
-
-// ── Pull ──────────────────────────────────────────────
-async function syncForcePull(){
-  // Wipe ALL local state that could block tenders
-  localStorage.removeItem('tt_deleted');
-  localStorage.removeItem('tt_people_deleted');
-  tenders = [];
-  save();
-  render();
-  // Pull ignoring remote deleted list too
-  const cfg = getSyncCfg();
-  if(!cfg.token){ toast('No token set',true); return; }
-  if(!cfg.gistId){ toast('No Gist ID',true); return; }
-  setSyncDot('busy');
-  try{
-    const res  = await gistReq('GET','/gists/'+cfg.gistId);
-    const file = res.files && res.files[SYNC_FILE];
-    if(!file){ toast('No data file in Gist',true); setSyncDot('err'); return; }
-    let raw = file.content;
-    if(file.truncated){ const r2=await fetch(file.raw_url); raw=await r2.text(); }
-    const p = JSON.parse(raw);
-    let arr = [], peopleArr = null;
-    if(Array.isArray(p)){ arr=p; }
-    else if(p&&Array.isArray(p.tenders)){ arr=p.tenders; peopleArr=p.people||null; }
-    // Load ALL tenders — ignore deleted list completely
-    tenders = arr.map(expandSlim);
-    save();
-    if(peopleArr&&peopleArr.length>0) savePeople(peopleArr);
-    render();
-    localStorage.setItem('tt_last_sync', Date.now().toString());
-    setSyncDot('ok');
-    toast('Force pulled ' + tenders.length + ' tenders ✓');
-  }catch(e){
-    setSyncDot('err');
-    toast('Force pull failed: '+e.message, true);
-    console.warn(e);
-  }
-}
-
-async function syncPull(silent){
-  const cfg = getSyncCfg();
-  if(!cfg.token) return;
-  if(!cfg.gistId){ if(!silent) toast('Push first to create the Gist',true); return; }
-  setSyncDot('busy');
-  try{
-    const res  = await gistReq('GET','/gists/'+cfg.gistId);
-    const file = res.files && res.files[SYNC_FILE];
-    if(!file){
-      setSyncDot('ok'); syncPush(silent); return;
-    }
-    let raw=file.content;
-    if(file.truncated){ const r2=await fetch(file.raw_url); raw=await r2.text(); }
-    let arr=[],peopleArr=null,remoteDeleted={};
-    try{
-      const p=JSON.parse(raw);
-      if(Array.isArray(p)){ arr=p; }
-      else if(p&&Array.isArray(p.tenders)){ arr=p.tenders; peopleArr=p.people||null; remoteDeleted=p.deleted||{}; }
-    }catch(e){ throw new Error('Invalid data in Gist'); }
-
-    // Use REMOTE deleted list as truth — but only if it seems sane
-    // If remote deleted has MORE entries than tenders, it's likely corrupt — ignore it
-    const deletedCount = Object.keys(remoteDeleted).length;
-    const safeDeleted = deletedCount < arr.length ? remoteDeleted : {};
-    localStorage.setItem('tt_deleted', JSON.stringify(safeDeleted));
-    const filtered = arr.filter(function(t){ return !safeDeleted[t.id]; });
-
-    tenders = filtered.map(expandSlim);
-    save();
-    if(peopleArr && peopleArr.length > 0){
-      // Filter out people that were deleted locally
-      const pplDel = JSON.parse(localStorage.getItem('tt_people_deleted')||'{}');
-      const filteredPeople = peopleArr.filter(function(p){ return !pplDel[p.id]; });
-      if(filteredPeople.length > 0) savePeople(filteredPeople);
-    }
-    render();
-    localStorage.setItem('tt_last_sync', Date.now().toString());
-    setSyncDot('ok');
-    if(!silent) toast('Pulled ' + filtered.length + ' tenders ✓');
-  }catch(e){ setSyncDot('err'); if(!silent) toast('Pull failed: '+e.message,true); console.warn(e); }
-}
-
-// ── Export / Import ───────────────────────────────────
-function exportLeadTime(){
-  function doExport(){
-    const today = new Date(); today.setHours(0,0,0,0);
-    const wb = XLSX.utils.book_new();
-    const people = getPeople();
-
-    // ── Helper: format date YYYY-MM-DD → DD Mon YYYY ──
-    function fmtD(d){
-      if(!d) return '';
-      const p = d.split('-');
-      if(p.length!==3) return d;
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return p[2]+' '+months[+p[1]-1]+' '+p[0];
-    }
-    function daysFromTs(ts){
-      if(!ts) return null;
-      const d = new Date(ts); d.setHours(0,0,0,0);
-      return Math.round((today - d) / 86400000);
-    }
-    function ownerName(t){
-      const p = t.owner ? people.find(function(x){return x.id===t.owner;}) : null;
-      return p ? p.name : '';
-    }
-
-    // ── SHEET 1: LEAD TIME MATRIX (Stages as rows, Tenders as columns) ──
-    // Row 1: Tender numbers
-    // Row 2: Owner
-    // Row 3: Priority
-    // Row 4: File Received
-    // Row 5: Total File Age
-    // Row 6: blank separator
-    // Rows 7+: One row per stage → "DD Mon YYYY (Xd)" or blank
-
-    const tenderList = tenders.slice(); // all tenders
-
-    // Build matrix data
-    const headerRow1 = ['STAGE'].concat(tenderList.map(function(t){ return t.no; }));
-    const headerRow2 = ['Owner'].concat(tenderList.map(function(t){ return ownerName(t); }));
-    const headerRow3 = ['Priority'].concat(tenderList.map(function(t){ return t.priority==='high'?'HIGH':''; }));
-    const headerRow4 = ['File Received'].concat(tenderList.map(function(t){ return fmtD(t.fileReceived); }));
-    const headerRow5 = ['Total File Age (days)'].concat(tenderList.map(function(t){
-      if(!t.fileReceived) return '';
-      const rcvd = new Date(t.fileReceived); rcvd.setHours(0,0,0,0);
-      return Math.round((today - rcvd)/86400000);
-    }));
-    const blankRow = ['──────────────────────────────'].concat(tenderList.map(function(){ return ''; }));
-
-    const matrix = [headerRow1, headerRow2, headerRow3, headerRow4, headerRow5, blankRow];
-
-    // One row per stage
-    STAGES.forEach(function(s){
-      const row = [s.label];
-      tenderList.forEach(function(t){
-        const sea = t.stageEnteredAt || {};
-        const inStage = (t.stages||[]).includes(s.id);
-        if(!inStage || !sea[s.id]){
-          row.push('');
-        } else {
-          const days = daysFromTs(sea[s.id]);
-          const entered = new Date(sea[s.id]);
-          const dateStr = entered.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][entered.getMonth()];
-          row.push(dateStr + ' (' + days + 'd)');
-        }
-      });
-      matrix.push(row);
-    });
-
-    // Total tracked days row
-    const totalRow = ['TOTAL TRACKED DAYS'];
-    tenderList.forEach(function(t){
-      const sea = t.stageEnteredAt || {};
-      let total = 0;
-      (t.stages||[]).forEach(function(sid){
-        if(sea[sid]){ total += daysFromTs(sea[sid]); }
-      });
-      totalRow.push(total || '');
-    });
-    matrix.push(['']);
-    matrix.push(totalRow);
-
-    const ws1 = XLSX.utils.aoa_to_sheet(matrix);
-
-    // Column widths: first col wide, rest narrow
-    ws1['!cols'] = [{wch:40}].concat(tenderList.map(function(){ return {wch:18}; }));
-    // Freeze first column and first row
-    ws1['!freeze'] = {xSplit:1, ySplit:1};
-
-    XLSX.utils.book_append_sheet(wb, ws1, 'Lead Time Matrix');
-
-    // ── SHEET 2: TENDER DETAILS ──
-    const detailHeaders = [
-      'Tender No','Owner','Priority','AF File',
-      'File Received','Total Age (days)','Current Stage(s)',
-      'Pre-Bid Date','Negotiation Date','Sale End',
-      'Tech Bid Opening','Price Bid Opening',
-      'Reverse Auction','Bid Validity','TCQ End'
-    ];
-    const detailRows = tenderList.map(function(t){
-      const totalAge = t.fileReceived
-        ? Math.round((today - (function(){ const d=new Date(t.fileReceived);d.setHours(0,0,0,0);return d;})()) / 86400000)
-        : '';
-      return [
-        t.no, ownerName(t),
-        t.priority==='high'?'High':'Normal',
-        t.isAF?'Yes':'No',
-        fmtD(t.fileReceived), totalAge,
-        (t.stages||[]).map(function(sid){ return sg(sid).label; }).join(' | '),
-        fmtD(t.preBid), fmtD(t.negoDate), fmtD(t.saleEnd),
-        fmtD(t.techBid), fmtD(t.priceBid),
-        fmtD(t.ra), fmtD(t.validity), fmtD(t.tcq)
-      ];
-    });
-    const ws2 = XLSX.utils.aoa_to_sheet([detailHeaders].concat(detailRows));
-    ws2['!cols'] = [
-      {wch:20},{wch:14},{wch:10},{wch:8},
-      {wch:16},{wch:16},{wch:40},
-      {wch:14},{wch:16},{wch:14},
-      {wch:16},{wch:16},{wch:14},{wch:14},{wch:12}
-    ];
-    ws2['!freeze'] = {xSplit:0, ySplit:1};
-    XLSX.utils.book_append_sheet(wb, ws2, 'Tender Details');
-
-    // ── SHEET 3: STAGE SUMMARY ──
-    const summaryHeaders = ['Stage','Active Tenders','Avg Days in Stage','Max Days','Min Days'];
-    const summaryRows = [];
-    let totalAvg = 0, stagesWithData = 0;
-    STAGES.forEach(function(s){
-      const inStage = tenders.filter(function(t){
-        return (t.stages||[]).includes(s.id) && t.stageEnteredAt && t.stageEnteredAt[s.id];
-      });
-      if(!inStage.length){ summaryRows.push([s.label,0,'','','']); return; }
-      const days = inStage.map(function(t){
-        return daysFromTs(t.stageEnteredAt[s.id]);
-      });
-      const avg = Math.round(days.reduce(function(a,b){return a+b;},0)/days.length);
-      totalAvg += avg; stagesWithData++;
-      summaryRows.push([s.label, inStage.length, avg, Math.max.apply(null,days), Math.min.apply(null,days)]);
-    });
-    summaryRows.push(['']);
-    summaryRows.push(['OVERALL AVERAGE','',stagesWithData?Math.round(totalAvg/stagesWithData):'','','']);
-    const ws3 = XLSX.utils.aoa_to_sheet([summaryHeaders].concat(summaryRows));
-    ws3['!cols'] = [{wch:45},{wch:18},{wch:20},{wch:12},{wch:12}];
-    ws3['!freeze'] = {xSplit:0, ySplit:1};
-    XLSX.utils.book_append_sheet(wb, ws3, 'Stage Summary');
-
-    // Download
-    const dateStr = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, 'TenderTrack-LeadTime-'+dateStr+'.xlsx');
-    toast('Excel exported ✓');
-  }
-
-  if(typeof XLSX !== 'undefined'){
-    doExport();
-  } else {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    script.onload = doExport;
-    script.onerror = function(){ toast('Failed to load Excel library', true); };
-    document.head.appendChild(script);
-  }
-}
-
-function exportData(){
-  const payload={tenders:buildSlim(),people:getPeople(),deleted:JSON.parse(localStorage.getItem('tt_deleted')||'{}')};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='tendertrack-'+new Date().toISOString().slice(0,10)+'.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  toast('Exported ✓');
-}
-
-function importData(){
-  const input=document.createElement('input'); input.type='file'; input.accept='.json';
-  input.addEventListener('change',function(){
-    const file=input.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=function(ev){
-      try{
-        const p=JSON.parse(ev.target.result);
-        const arr=Array.isArray(p)?p:(p&&Array.isArray(p.tenders)?p.tenders:null);
-        if(!arr) throw new Error('Not a valid export file');
-        if(tenders.length>0&&!confirm('Replace all '+tenders.length+' tenders with imported data?')) return;
-        tenders=arr.map(expandSlim); save();
-        // Restore people if included in export
-        if(p&&Array.isArray(p.people)&&p.people.length>0){
-          savePeople(p.people);
-        }
-        // Restore deleted list if included
-        if(p&&p.deleted){ localStorage.setItem('tt_deleted',JSON.stringify(p.deleted)); }
-        render();
-        toast('Imported '+tenders.length+' tenders ✓');
-      }catch(err){ toast('Import failed: '+err.message,true); }
-    };
-    reader.readAsText(file);
-  });
-  input.click();
-}
-
-
-// ── Sync modal ────────────────────────────────────────
-function openSync(){
-  const cfg       = getSyncCfg();
-  const connected = !!(cfg.token);
-  const lastSync  = localStorage.getItem('tt_last_sync');
-  const lsStr     = lastSync
-    ? new Date(+lastSync).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
-    : 'Never';
-
-  let html = '';
-
-  if(connected){
-    html =
-      '<div class="sync-bar">'+
-        '<span class="sync-dot ok"></span>'+
-        '<span>Connected · Last sync: <b>' + lsStr + '</b></span>'+
-      '</div>'+
-      // Debug panel — always visible so user can see state
-      '<div style="background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;font-family:var(--mono);color:var(--dim);line-height:1.8;">'+
-        'Token: <b style="color:var(--text)">' + esc(cfg.token ? cfg.token.slice(0,12)+'…' : '❌ none') + '</b><br>'+
-        'Gist ID: <b style="color:var(--text)">' + (cfg.gistId ? esc(cfg.gistId.slice(0,16))+'…' : '❌ not found') + '</b><br>'+
-        'Local tenders: <b style="color:var(--text)">' + tenders.length + '</b>'+
-      '</div>'+
-      '<div class="sync-acts">'+
-        '<button class="btn-push" id="sp-push">⬆ Push</button>'+
-        '<button class="btn-pull" id="sp-pull">⬇ Pull</button>'+
-        '<button class="btn-pull" id="sp-test" style="background:var(--card2);color:var(--dim);border:1px solid var(--border2);">🔍 Test</button>'+
-      '</div>'+
-      '<div id="sp-test-result" style="font-size:11px;font-family:var(--mono);min-height:16px;margin-bottom:8px;padding:6px 8px;line-height:1.7;display:none;background:var(--muted);border-radius:7px;border:1px solid var(--border);"></div>'+
-      '<div style="margin-bottom:12px;">'+
-        '<button id="sp-force-pull" style="width:100%;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);background:var(--card2);color:var(--yellow);border:1px solid rgba(180,83,9,.3);">⚠ Force Pull — replace ALL local data with Gist</button>'+
-      '</div>'+
-      '<div class="fsec">Export / Import (no account needed)</div>'+
-      '<div class="sync-acts">'+
-        '<button class="btn-push" id="sp-export" style="background:var(--purple)">⬇ JSON</button>'+
-        '<button class="btn-pull" id="sp-import">⬆ JSON</button>'+
-        '<button class="btn-pull" id="sp-excel" style="background:var(--green);color:#fff;border:none;">📊 Excel</button>'+
-      '</div>'+
-      '<div class="fsec">GitHub Token</div>'+
-      '<div class="frow" style="margin-bottom:0">'+
-        '<input class="fi" id="sp-token" type="password" value="' + esc(cfg.token||'') + '" '+
-          'placeholder="ghp_…" style="font-size:13px;font-family:var(--mono);">'+
-      '</div>';
-  } else {
-    html =
-      // Big direct button — most people miss the link in text
-      '<a href="https://github.com/settings/tokens/new?scopes=gist&description=TenderTrack" target="_blank" '+
-        'style="display:flex;align-items:center;justify-content:center;gap:8px;'+
-        'background:var(--purple);color:#fff;border:none;border-radius:10px;'+
-        'padding:12px 16px;font-family:var(--sans);font-size:14px;font-weight:700;'+
-        'text-decoration:none;margin-bottom:16px;cursor:pointer;">'+
-        '🔗 Open GitHub Token Page →'+
-      '</a>'+
-      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;">'+
-        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Follow these steps on that page:</div>'+
-        '<div style="font-size:12px;color:var(--dim);line-height:1.9;">'+
-          '<b style="color:var(--text)">1.</b> Scroll down to <b style="color:var(--text)">Token name</b> — it\'s already filled as "TenderTrack"<br>'+
-          '<b style="color:var(--text)">2.</b> Set <b style="color:var(--text)">Expiration</b> — choose <b style="color:var(--text)">No expiration</b><br>'+
-          '<b style="color:var(--text)">3.</b> Under <b style="color:var(--text)">Select scopes</b> — tick only <b style="color:var(--text)">gist</b> ✓<br>'+
-          '<b style="color:var(--text)">4.</b> Scroll to bottom → click <b style="color:var(--text)">Generate token</b><br>'+
-          '<b style="color:var(--text)">5.</b> Copy the token shown (starts with <code style="font-family:var(--mono);background:var(--muted);padding:1px 5px;border-radius:4px;">ghp_</code>)'+
-        '</div>'+
-      '</div>'+
-      '<div class="sync-step-num" style="width:auto;height:auto;border-radius:0;background:none;border:none;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);padding:0 0 6px;display:block;">Paste token here</div>'+
-      '<div class="frow" style="margin-bottom:14px;">'+
-        '<input class="fi" id="sp-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" '+
-          'style="font-size:13px;font-family:var(--mono);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:14px;">'+
-        'After connecting, tap <b style="color:var(--text)">Push</b> once. A private Gist is created automatically.<br>'+
-        'On other devices: enter the same token and tap <b style="color:var(--text)">Pull</b>.'+
-      '</div>'+
-      '<div class="fsec">Or skip accounts — Export / Import</div>'+
-      '<div class="sync-acts" style="margin-top:8px">'+
-        '<button class="btn-push" id="sp-export" style="background:var(--purple)">⬇ JSON</button>'+
-        '<button class="btn-pull" id="sp-import">⬆ JSON</button>'+
-        '<button class="btn-pull" id="sp-excel" style="background:var(--green);color:#fff;border:none;">📊 Excel</button>'+
-      '</div>';
-  }
-
-  html +=
-    '<div class="mfoot" style="padding-top:14px;border-top:1px solid var(--border)">'+
-      (connected ? '<button id="sp-disc" class="btn-c" style="margin-right:auto;color:var(--red);border-color:rgba(224,90,78,.3)">Disconnect</button>' : '')+
-      '<button class="btn-c" onclick="closeM(\'modal-sync\')">Cancel</button>'+
-      '<button class="btn-s" id="sp-connect">' + (connected ? 'Save Token' : 'Connect') + '</button>'+
-    '</div>';
-
-  document.getElementById('sync-body').innerHTML = html;
-
-  function wire(id, fn){ const el = document.getElementById(id); if(el) el.addEventListener('click', fn); }
-
-  // Wire old Google Sheets one-time migration
-
-  wire('sp-push',   function(){ closeM('modal-sync'); syncPush(); });
-  wire('sp-pull',   function(){ closeM('modal-sync'); syncPull(); });
-
-  wire('sp-test', async function(){
-    const resultEl = document.getElementById('sp-test-result');
-    if(!resultEl) return;
-    resultEl.style.display = 'block';
-    resultEl.style.color = 'var(--dim)';
-    resultEl.textContent = '⏳ Testing...';
-    const cfg = getSyncCfg();
-    const lines = [];
-    try{
-      // Step 1: check token
-      lines.push('1. Token: ' + (cfg.token ? cfg.token.slice(0,12)+'…' : '❌ missing'));
-      if(!cfg.token){ resultEl.innerHTML = lines.join('<br>'); return; }
-
-      // Step 2: verify token with GitHub
-      const userRes = await fetch('https://api.github.com/user', {
-        headers: { 'Authorization': 'Bearer '+cfg.token, 'Accept': 'application/vnd.github+json' }
-      });
-      if(userRes.ok){
-        const user = await userRes.json();
-        lines.push('2. GitHub user: ✓ ' + esc(user.login));
-      } else {
-        lines.push('2. GitHub auth: ❌ ' + userRes.status + ' — token invalid or expired');
-        resultEl.style.color = 'var(--red)';
-        resultEl.innerHTML = lines.join('<br>');
-        return;
-      }
-
-      // Step 3: check gistId
-      lines.push('3. Gist ID: ' + (cfg.gistId ? '✓ '+cfg.gistId.slice(0,16)+'…' : '❌ not set'));
-
-      // Step 4: search for Gist
-      const listRes = await fetch('https://api.github.com/gists?per_page=50', {
-        headers: { 'Authorization': 'Bearer '+cfg.token, 'Accept': 'application/vnd.github+json' }
-      });
-      if(listRes.ok){
-        const gists = await listRes.json();
-        const found = gists.find(function(g){ return g.files && g.files[SYNC_FILE]; });
-        if(found){
-          lines.push('4. Gist found: ✓ ' + found.id.slice(0,16)+'…');
-          if(!cfg.gistId){
-            cfg.gistId = found.id; saveSyncCfg(cfg);
-            lines.push('   → GistID saved! Tap Pull now.');
-          }
-        } else {
-          lines.push('4. Gist search: no TenderTrack Gist found (need to Push first from main device)');
-        }
-      } else {
-        lines.push('4. Gist list: ❌ ' + listRes.status);
-      }
-
-      resultEl.style.color = 'var(--green)';
-      resultEl.innerHTML = lines.join('<br>');
-    } catch(e){
-      lines.push('❌ Error: ' + e.message);
-      resultEl.style.color = 'var(--red)';
-      resultEl.innerHTML = lines.join('<br>');
-    }
-  });
-  wire('sp-force-pull', function(){
-    if(!confirm('This will REPLACE all your local tenders with the Gist data. Any unsynced local changes will be lost. Continue?')) return;
-    closeM('modal-sync');
-    syncForcePull();
-  });
-  wire('sp-export', exportData);
-  wire('sp-import', importData);
-  wire('sp-excel',  exportLeadTime);
-
-  wire('sp-connect', function(){
-    const inp = document.getElementById('sp-token');
-    if(!inp) return;
-    const token = inp.value.trim();
-    if(!token){ toast('Enter your GitHub token', true); return; }
-    if(!token.startsWith('ghp_') && !token.startsWith('github_pat_')){
-      toast('Token should start with ghp_ or github_pat_', true); return;
-    }
-    const oldCfg = getSyncCfg();
-    const newCfg = { token: token, gistId: token === oldCfg.token ? (oldCfg.gistId||'') : '' };
-    saveSyncCfg(newCfg);
-    setSyncDot('ok');
-    closeM('modal-sync');
-    toast('Token saved ✓');
-    // Try to find existing Gist — if found pull, if not create via push
-    findOrCreateGistId().then(function(gistId){
-      if(gistId){ syncPull(); } else { syncPush(); }
-    });
-  });
-
-  wire('sp-disc', function(){
-    const btn = document.getElementById('sp-disc');
-    if(!btn) return;
-    if(btn.dataset.armed === '1'){
-      saveSyncCfg({});
-      localStorage.removeItem('tt_last_sync');
-      setSyncDot('idle');
-      closeM('modal-sync');
-      toast('Sync disconnected');
-    } else {
-      btn.dataset.armed = '1';
-      btn.textContent = 'Tap again to confirm';
-      setTimeout(function(){ if(btn) { btn.dataset.armed='0'; btn.textContent='Disconnect'; }}, 2500);
-    }
-  });
-
-  openM('modal-sync');
 }
 
 // ── DRAG AND DROP ─────────────────────────────────────
@@ -3962,7 +3316,6 @@ function openSync(){
     save(); render();
     var toStage = STAGES.find(function(s){ return s.id === toSid; });
     toast('Moved to ' + (toStage ? toStage.label : 'stage'));
-    schedulePush();
   }
 
   window.initDrag = function(wrap){
@@ -4378,24 +3731,7 @@ load();
 buildSelects();
 initDatePickers();
 render();
-const _initCfg = getSyncCfg();
-setSyncDot(_initCfg.token ? 'ok' : 'idle');
-if(_initCfg.token){
-  if(_initCfg.gistId){
-    // Already know the Gist — just pull
-    syncPull(true);
-  } else {
-    // Have token but no gistId (new device) — try to find existing Gist first
-    setSyncDot('busy');
-    findOrCreateGistId().then(function(gistId){
-      if(gistId){
-        syncPull(true); // found it — pull data
-      } else {
-        setSyncDot('ok'); // no Gist yet — first device, will be created on first push
-      }
-    });
-  }
-}
+setSyncDot('idle');
 initProfile();
 
 // Show initial dot state before first fetch completes
