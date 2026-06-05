@@ -1765,8 +1765,18 @@ function showImportModal() {
                 <tbody>${mappingRows}</tbody>
             </table>
         </div>
-        <div style="margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
             <button class="btn btn-outline" style="padding:5px 14px;font-size:12px;" onclick="saveImportMapping()">💾 Save This Mapping</button>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-sub);">
+                Override status for all rows:
+                <select id="import-status-override" style="font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-main);">
+                    <option value="">— Use column value —</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Awarded">Awarded</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="On Hold">On Hold</option>
+                </select>
+            </label>
         </div>
         <div class="sec-label" style="margin-bottom:10px;">Preview (first 5 rows)</div>
         <div id="import-preview-wrap"></div>
@@ -1935,7 +1945,8 @@ async function confirmImport() {
         const allotDate  = parseImportDate(rec.allotmentDate);
         const resultDate = parseImportDate(rec.resultDate);
         const woDate     = parseImportDate(rec.woDate);
-        const status     = rec.status ? normalizeStatus(rec.status) : 'In Progress';
+        const statusOverride = document.getElementById('import-status-override')?.value;
+        const status     = statusOverride || (rec.status ? normalizeStatus(rec.status) : 'In Progress');
         const budget     = rec.budgetType ? (String(rec.budgetType).trim() === 'AF' ? 'AF' : 'Revenue') : 'Revenue';
 
         const data = {
