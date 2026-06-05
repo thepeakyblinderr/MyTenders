@@ -1071,10 +1071,10 @@ function load(){
         localStorage.setItem(KEY, raw);
       }
     }
-    tenders = JSON.parse(raw || '[]');
+    tenders = JSON.parse(raw || '[]').filter(function(t){ return !t.id.startsWith('mt_'); });
   } catch(e) { tenders = []; }
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(tenders)); scheduleFBPush(); }
+function save(){ localStorage.setItem(KEY, JSON.stringify(tenders.filter(function(t){ return !t.id.startsWith('mt_'); }))); scheduleFBPush(); }
 
 // ── SNOOZE ────────────────────────────────────────────
 function getSnoozes(){ try{ return JSON.parse(localStorage.getItem(SNOOZE_KEY)||'{}'); }catch(e){ return {}; } }
@@ -3201,7 +3201,7 @@ function setSyncDot(state){
 
 // ── Slim/expand payload (same field mapping) ──────────
 function buildSlim(){
-  return tenders.map(function(t){
+  return tenders.filter(function(t){ return !t.id.startsWith('mt_'); }).map(function(t){
     const o = {id:t.id, no:t.no, stages:t.stages};
     if(t.workName) o.wn2 = t.workName;
     if(t.owner)     o.ow  = t.owner;
