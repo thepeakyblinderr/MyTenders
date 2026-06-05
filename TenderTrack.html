@@ -1060,16 +1060,17 @@ function load(){
 const MT_STAGES_KEY = 'tt_mt_stages';
 function getMTStages(){ try{ return JSON.parse(localStorage.getItem(MT_STAGES_KEY)||'{}'); }catch(e){ return {}; } }
 function saveMTStages(){
+  // Persist the FULL state of each mt_ tender (minus the display fields that
+  // are refreshed from MyTender on every sync). This keeps all user-edited
+  // data — stages, assignments, dates, TCQ, owner, etc. — across refreshes.
   const map = {};
   tenders.forEach(function(t){
     if(!t.id.startsWith('mt_')) return;
-    map[t.id] = {
-      stages:             t.stages,
-      stageEnteredAt:     t.stageEnteredAt     || {},
-      stageAssigned:      t.stageAssigned      || {},
-      stageAssignHistory: t.stageAssignHistory || {},
-      updatedAt:          t.updatedAt          || 0
-    };
+    const copy = Object.assign({}, t);
+    // These are sourced from MyTender each sync — no need to persist
+    delete copy.no; delete copy.workName; delete copy.notes;
+    delete copy.priority; delete copy.isAF; delete copy._mt;
+    map[t.id] = copy;
   });
   localStorage.setItem(MT_STAGES_KEY, JSON.stringify(map));
 }
@@ -3748,24 +3749,26 @@ function syncMTEntries(activeList) {
       return;
     }
 
-    // Restore saved stage position if available, otherwise start at inbox (stage 0)
+    // Restore full saved state if available, otherwise start at inbox (stage 0)
     const saved = savedStages[ttId];
     const midnight = (function(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
-    tenders.unshift({
-      id:                 ttId,
-      no:                 label,
-      workName:           t.nameOfWork || '',
-      notes:              notes,
-      stages:             saved ? saved.stages             : [0],
-      stageEnteredAt:     saved ? saved.stageEnteredAt     : { 0: midnight },
-      stageAssigned:      saved ? saved.stageAssigned      : {},
-      stageAssignHistory: saved ? saved.stageAssignHistory : {},
-      updatedAt:          saved ? saved.updatedAt          : undefined,
-      priority:           isCrit ? 'high' : '',
-      isAF:               isAF,
-      owner:              null,
-      _mt:                true
-    });
+    const base = saved ? Object.assign({}, saved) : {
+      stages:             [0],
+      stageEnteredAt:     { 0: midnight },
+      stageAssigned:      {},
+      stageAssignHistory: {},
+      owner:              null
+    };
+    // Apply fresh display fields from MyTender over the restored state
+    tenders.unshift(Object.assign(base, {
+      id:       ttId,
+      no:       label,
+      workName: t.nameOfWork || '',
+      notes:    notes,
+      priority: isCrit ? 'high' : '',
+      isAF:     isAF,
+      _mt:      true
+    }));
   });
 
   save();
