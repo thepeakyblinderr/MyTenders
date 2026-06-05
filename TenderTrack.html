@@ -3070,30 +3070,65 @@ async function fbTTGet() {
   return r.json();
 }
 
-async function fbTTPut(data) {
+async function fbTTPut(data, keepalive) {
   const url = localStorage.getItem('mytenders_db_url');
   if (!url) return;
-  const r = await fetch(url + '/' + FB_TT_PATH + '.json', {
+  const opts = {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  });
+  };
+  if (keepalive) opts.keepalive = true; // survive tab close (≤64KB)
+  const r = await fetch(url + '/' + FB_TT_PATH + '.json', opts);
   if (!r.ok) throw new Error('HTTP ' + r.status);
 }
 
 let _fbTimer = null;
+let _fbPushPending = false;
 function scheduleFBPush() {
   const url = localStorage.getItem('mytenders_db_url');
   if (!url) return;
   clearTimeout(_fbTimer);
+  _fbPushPending = true;
   const dot = document.getElementById('sync-dot');
   if (dot) dot.className = 'sync-dot pending';
-  _fbTimer = setTimeout(fbTTPush, 5000);
+  _fbTimer = setTimeout(function(){ _fbPushPending = false; fbTTPush(); }, 5000);
 }
+
+// Flush any pending debounced push immediately when the tab is hidden or
+// closed, so a quick edit + close doesn't lose the change on other devices.
+// Uses fetch keepalive:true (PUT) which survives unload — sendBeacon can't
+// be used because it only sends POST, which Firebase treats as append.
+function flushFBPush() {
+  if (!_fbPushPending) return;
+  clearTimeout(_fbTimer);
+  _fbPushPending = false;
+  const url = localStorage.getItem('mytenders_db_url');
+  if (!url) return;
+  const pushTime = Date.now();
+  try {
+    fbTTPut({
+      tenders:      buildSlim(),
+      people:       getPeople(),
+      deleted:      JSON.parse(localStorage.getItem('tt_deleted')        || '{}'),
+      peopleDeleted:JSON.parse(localStorage.getItem('tt_people_deleted') || '{}'),
+      mtStages:     getMTStages(),
+      followUp:     getFU(),
+      syncedAt:     pushTime
+    }, true);
+    localStorage.setItem('tt_last_push', String(pushTime));
+  } catch(e) {}
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') flushFBPush();
+});
+window.addEventListener('pagehide', flushFBPush);
 
 async function fbTTPush() {
   const url = localStorage.getItem('mytenders_db_url');
   if (!url) return;
+  clearTimeout(_fbTimer);
+  _fbPushPending = false;
   setSyncDot('busy');
   try {
     const pushTime = Date.now();
@@ -3712,7 +3747,8 @@ function saveFbUrl() {
   if (!url) { toast('Enter a valid Firebase URL', true); return; }
   localStorage.setItem('mytenders_db_url', url);
   closeM('modal-fb-connect');
-  loadMTTenders(true);
+  // Pull TenderTrack pipeline state first, then load MyTender tenders
+  fbTTPull(false).then(function(){ loadMTTenders(true); });
 }
 
 function disconnectFb() {
@@ -3783,6 +3819,9 @@ function syncMTEntries(activeList) {
     }));
   });
 
+  // Prune stale mtStages entries for tenders no longer active (e.g. Awarded)
+  // so the store doesn't grow unbounded. saveMTStages() (called via save())
+  // only writes currently-active mt_ tenders, so this happens automatically.
   save();
   render();
 }
@@ -3797,14 +3836,17 @@ initProfile();
 
 // Show initial dot state before first fetch completes
 updateDbDot(localStorage.getItem('mytenders_db_url') ? 'syncing' : 'none');
-// Load MyTender "In Progress" items and refresh every 60s
-loadMTTenders();
-setInterval(loadMTTenders, 60000);
-window.addEventListener('focus', loadMTTenders);
 
-// Firebase pipeline sync — pull on load and on window focus
-fbTTPull(true);
-window.addEventListener('focus', function(){ fbTTPull(true); });
+// Ordered sync: pull TenderTrack state (restores mtStages + native tenders)
+// FIRST, then rebuild mt_ chips from the freshly-merged data. Running these
+// concurrently caused cross-device stage updates to lag or get overwritten.
+async function fullSync(silent){
+  await fbTTPull(silent);
+  await loadMTTenders();
+}
+fullSync(true);
+setInterval(function(){ fullSync(true); }, 60000);
+window.addEventListener('focus', function(){ fullSync(true); });
 
 // ── MIDNIGHT REFRESH ──────────────────────────────────
 // Re-renders at midnight so Today tab always shows correct date
