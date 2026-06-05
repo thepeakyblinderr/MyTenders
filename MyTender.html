@@ -1161,8 +1161,29 @@ function applyFilters() {
         return true;
     });
 
+    // Stats count from all tenders matching every filter EXCEPT status
+    // so Cancelled/Awarded/In Progress counts are always visible regardless of status filter
+    const statsRows = tenders.filter(t => {
+        if (q && ![
+            t.nameOfWork, t.tenderNumber, t.enividaNumber, t.department,
+            t.fileHandler, t.tenderMode, t.tenderType, t.priceType,
+            t.nature, t.status, t.financialYear, t.remarks,
+            t.allotmentDate, t.resultDate, t.shutdownJob, t.budgetType, t.tenderSplit,
+            t.prNo, t.woNumber, t.woDate, t.vendorName, t.isCritical,
+            t.finalLandedCost != null ? String(t.finalLandedCost) : '',
+            t.valueInclGST    != null ? String(t.valueInclGST)    : '',
+            t.valueExclGST    != null ? String(t.valueExclGST)    : '',
+            t.leadDays        != null ? String(t.leadDays)        : ''
+        ].some(v => (v||'').toLowerCase().includes(q))) return false;
+        if (fy       && t.financialYear !== fy)     return false;
+        if (mode     && t.tenderMode  !== mode)     return false;
+        if (dept     && t.department  !== dept)     return false;
+        if (critical && t.isCritical  !== critical) return false;
+        return true;
+    });
+
     filteredRows = rows;
-    updateDashboard();
+    updateDashboard(statsRows);
     renderTable(rows);
 }
 
@@ -1184,8 +1205,8 @@ function sumLanded(rows) {
     return rows.reduce((s, t) => s + (parseFloat(t.finalLandedCost) || 0), 0);
 }
 
-function updateDashboard() {
-    const rows = filteredRows;
+function updateDashboard(rows) {
+    rows = rows || filteredRows;
 
     document.getElementById('c-total').textContent     = rows.length;
     document.getElementById('c-progress').textContent  = rows.filter(t=>t.status==='In Progress').length;
