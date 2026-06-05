@@ -3108,19 +3108,32 @@ async function fbTTPull(silent) {
       localStorage.setItem('tt_people_deleted', JSON.stringify(Object.assign({}, lPplDel, rPplDel)));
     }
 
-    // Merge tenders — newer updatedAt wins
+    // Merge tenders — newer updatedAt wins; local wins on tie (local is always at least as fresh)
     function ts(t) {
       if (t.updatedAt && t.updatedAt > 0) return t.updatedAt;
       const v = Object.values(t.stageEnteredAt || {}).filter(function(x){ return x > 0; });
       return v.length ? Math.max.apply(null, v) : 0;
     }
     const remoteTenders = (remote.tenders || []).map(expandSlim);
+
+    // If local data is consistently newer than remote, skip the merge entirely
+    // to protect against stale Firebase data overwriting a fresh local board
+    const localTs  = tenders.reduce(function(mx,t){ return Math.max(mx, ts(t)); }, 0);
+    const remoteTs = remoteTenders.reduce(function(mx,t){ return Math.max(mx, ts(t)); }, 0);
+    if (localTs > 0 && localTs >= remoteTs && tenders.length >= remoteTenders.length) {
+      // Local is at least as new — just push local state to Firebase and return
+      setSyncDot('ok');
+      await fbTTPush();
+      if (!silent) toast('Synced ✓');
+      return;
+    }
+
     const map = {};
     remoteTenders.forEach(function(t){ if (!allDeleted[t.id]) map[t.id] = t; });
     tenders.forEach(function(t){
       if (allDeleted[t.id]) return;
       const r = map[t.id];
-      if (!r || ts(t) > ts(r)) map[t.id] = t;
+      if (!r || ts(t) >= ts(r)) map[t.id] = t; // local wins on tie
     });
     const merged = Object.values(map);
     merged.sort(function(a, b){ return ts(b) - ts(a); });
