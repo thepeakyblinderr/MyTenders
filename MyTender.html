@@ -1580,6 +1580,66 @@ let importData    = [];
 let importHeaders = [];
 let importMapping = {};
 
+// ── SAVED IMPORT MAPPINGS ─────────────────────────────
+const MAPPING_STORE_KEY = 'mt_import_mappings';
+function getSavedMappings(){ try{ return JSON.parse(localStorage.getItem(MAPPING_STORE_KEY)||'{}'); }catch(e){ return {}; } }
+function setSavedMappings(obj){ localStorage.setItem(MAPPING_STORE_KEY, JSON.stringify(obj)); }
+
+function saveImportMapping() {
+    const name = prompt('Name this mapping (e.g. "JR CMS Awarded"):');
+    if (!name || !name.trim()) return;
+    const saved = getSavedMappings();
+    saved[name.trim()] = Object.assign({}, importMapping);
+    setSavedMappings(saved);
+    renderMappingToolbar();
+    alert('Mapping "' + name.trim() + '" saved ✓');
+}
+
+function applyImportMapping() {
+    const sel = document.getElementById('saved-mapping-sel');
+    if (!sel || !sel.value) return;
+    const saved = getSavedMappings()[sel.value];
+    if (!saved) return;
+    // Apply saved col→field pairs where the column exists in the current file
+    Object.entries(saved).forEach(([col, field]) => {
+        if (importHeaders.includes(col)) importMapping[col] = field;
+    });
+    // Refresh all select dropdowns to reflect applied mapping
+    document.querySelectorAll('.mapping-select').forEach(function(sel) {
+        const col = sel.dataset.col;
+        if (importMapping[col] !== undefined) sel.value = importMapping[col];
+    });
+    updateImportPreview();
+}
+
+function deleteImportMapping() {
+    const sel = document.getElementById('saved-mapping-sel');
+    if (!sel || !sel.value) return;
+    if (!confirm('Delete mapping "' + sel.value + '"?')) return;
+    const saved = getSavedMappings();
+    delete saved[sel.value];
+    setSavedMappings(saved);
+    renderMappingToolbar();
+}
+
+function renderMappingToolbar() {
+    const wrap = document.getElementById('mapping-toolbar');
+    if (!wrap) return;
+    const saved = getSavedMappings();
+    const names = Object.keys(saved);
+    if (!names.length) {
+        wrap.innerHTML = '<span style="font-size:12px;color:var(--text-sub);">No saved mappings yet — map columns below then click Save.</span>';
+        return;
+    }
+    wrap.innerHTML =
+        '<select id="saved-mapping-sel" style="font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-main);max-width:220px;">' +
+        '<option value="">— Select saved mapping —</option>' +
+        names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('') +
+        '</select>' +
+        '<button class="btn btn-outline" style="padding:5px 12px;font-size:12px;" onclick="applyImportMapping()">Apply</button>' +
+        '<button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:#e53935;border-color:#e53935;" onclick="deleteImportMapping()">Delete</button>';
+}
+
 function openImport() {
     document.getElementById('import-file-input').value = '';
     document.getElementById('import-file-input').click();
@@ -1671,16 +1731,21 @@ function showImportModal() {
     }).join('');
 
     document.getElementById('import-body').innerHTML = `
-        <p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;">
+        <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">
             Found <strong>${importData.length} rows</strong> in your file.
-            Review the auto-detected column mapping below, then click Import.
+            Apply a saved mapping or set columns manually, then click Import.
         </p>
-        <div class="sec-label" style="margin-bottom:10px;">Column Mapping</div>
-        <div style="overflow-x:auto;margin-bottom:18px;">
+        <div class="sec-label" style="margin-bottom:6px;">Saved Mappings</div>
+        <div id="mapping-toolbar" style="display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap;"></div>
+        <div class="sec-label" style="margin-bottom:6px;">Column Mapping</div>
+        <div style="overflow-x:auto;margin-bottom:8px;">
             <table class="mapping-table">
                 <thead><tr><th>Your Excel Column</th><th>Maps To</th><th>Sample Values</th></tr></thead>
                 <tbody>${mappingRows}</tbody>
             </table>
+        </div>
+        <div style="margin-bottom:18px;">
+            <button class="btn btn-outline" style="padding:5px 14px;font-size:12px;" onclick="saveImportMapping()">💾 Save This Mapping</button>
         </div>
         <div class="sec-label" style="margin-bottom:10px;">Preview (first 5 rows)</div>
         <div id="import-preview-wrap"></div>
@@ -1688,6 +1753,7 @@ function showImportModal() {
     `;
     document.getElementById('import-confirm-btn').textContent = `Import ${importData.length} Records`;
     document.getElementById('import-confirm-btn').disabled = false;
+    renderMappingToolbar();
     updateImportPreview();
     show('import-bg');
 }
