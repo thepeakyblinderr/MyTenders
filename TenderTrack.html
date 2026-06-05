@@ -3073,13 +3073,15 @@ async function fbTTPush() {
   if (!url) return;
   setSyncDot('busy');
   try {
+    const pushTime = Date.now();
     await fbTTPut({
       tenders:      buildSlim(),
       people:       getPeople(),
       deleted:      JSON.parse(localStorage.getItem('tt_deleted')        || '{}'),
       peopleDeleted:JSON.parse(localStorage.getItem('tt_people_deleted') || '{}'),
-      syncedAt:     Date.now()
+      syncedAt:     pushTime
     });
+    localStorage.setItem('tt_last_push', String(pushTime));
     setSyncDot('ok');
   } catch(e) {
     setSyncDot('err');
@@ -3096,6 +3098,14 @@ async function fbTTPull(silent) {
     const remote = await fbTTGet();
     if (!remote) { setSyncDot('ok'); fbTTPush(); return; } // first time — push local data
 
+    // If Firebase hasn't changed since our last push, we're already the latest — skip pull
+    const lastPush     = parseInt(localStorage.getItem('tt_last_push') || '0');
+    const remoteSyncAt = remote.syncedAt || 0;
+    if (lastPush > 0 && remoteSyncAt <= lastPush) {
+      setSyncDot('ok');
+      return; // nothing new on Firebase
+    }
+
     // Merge deletion tombstones
     const localDeleted  = JSON.parse(localStorage.getItem('tt_deleted')        || '{}');
     const remoteDeleted = remote.deleted || {};
@@ -3108,7 +3118,7 @@ async function fbTTPull(silent) {
       localStorage.setItem('tt_people_deleted', JSON.stringify(Object.assign({}, lPplDel, rPplDel)));
     }
 
-    // Merge tenders — newer updatedAt wins
+    // Merge tenders — newer updatedAt wins; local wins on tie
     function ts(t) {
       if (t.updatedAt && t.updatedAt > 0) return t.updatedAt;
       const v = Object.values(t.stageEnteredAt || {}).filter(function(x){ return x > 0; });
@@ -3120,7 +3130,7 @@ async function fbTTPull(silent) {
     tenders.forEach(function(t){
       if (allDeleted[t.id]) return;
       const r = map[t.id];
-      if (!r || ts(t) > ts(r)) map[t.id] = t;
+      if (!r || ts(t) >= ts(r)) map[t.id] = t; // local wins on tie
     });
     const merged = Object.values(map);
     merged.sort(function(a, b){ return ts(b) - ts(a); });
