@@ -3065,7 +3065,7 @@ const FB_TT_PATH = 'tendertrack/state';
 async function fbTTGet() {
   const url = localStorage.getItem('mytenders_db_url');
   if (!url) return null;
-  const r = await fetch(url + '/' + FB_TT_PATH + '.json');
+  const r = await fetch(url + '/' + FB_TT_PATH + '.json', { cache: 'no-store' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -3710,7 +3710,7 @@ async function loadMTTenders(manual) {
   if (btn) btn.disabled = true;
   updateDbDot('syncing');
   try {
-    const res  = await fetch(url + '/tenders.json');
+    const res  = await fetch(url + '/tenders.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status + ' — check Firebase DB Rules (read must be true)');
     const data = await res.json();
     if (data === null) {
