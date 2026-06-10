@@ -376,6 +376,34 @@
             grid-column: 1 / -1; margin-top: 4px;
         }
 
+        /* ── WO LIST (split tenders) ── */
+        .wo-list-wrap { grid-column: 1 / -1; }
+        .wo-list-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .wo-list-header span {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.4px; color: var(--text-sub);
+        }
+        .btn-add-wo {
+            font-size: 12px; padding: 4px 12px; border-radius: 6px;
+            border: 1px solid var(--primary); color: var(--primary);
+            background: #fff; cursor: pointer; font-weight: 600;
+        }
+        .btn-add-wo:hover { background: var(--primary); color: #fff; }
+        .wo-row {
+            display: grid; grid-template-columns: 1fr 140px 1fr 32px;
+            gap: 8px; margin-bottom: 8px; align-items: end;
+        }
+        .wo-row .field label { font-size: 10px; }
+        .wo-row .btn-rm-wo {
+            height: 36px; width: 32px; border: 1px solid #f66; color: #f66;
+            background: #fff; border-radius: 6px; cursor: pointer; font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .wo-row .btn-rm-wo:hover { background: #fff0f0; }
+
         .modal-foot {
             padding: 14px 26px; border-top: 1px solid var(--border);
             display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
@@ -839,7 +867,7 @@
                 </div>
                 <div class="field">
                     <label>Tender Split</label>
-                    <select id="m-split">
+                    <select id="m-split" onchange="toggleSplitWO()">
                         <option>No</option>
                         <option>Yes</option>
                     </select>
@@ -881,17 +909,29 @@
                     <label>PR No</label>
                     <input type="text" id="m-pr-no" placeholder="Purchase Requisition No.">
                 </div>
-                <div class="field">
-                    <label>WO Number</label>
-                    <input type="text" id="m-wo-no" placeholder="Work Order Number">
+                <!-- Single WO fields — hidden when split = Yes -->
+                <div id="single-wo-wrap" style="display:contents;">
+                    <div class="field">
+                        <label>WO Number</label>
+                        <input type="text" id="m-wo-no" placeholder="Work Order Number">
+                    </div>
+                    <div class="field">
+                        <label>WO Date</label>
+                        <input type="date" id="m-wo-date" oninput="recalcLead()">
+                    </div>
+                    <div class="field">
+                        <label>Vendor Name</label>
+                        <input type="text" id="m-vendor" placeholder="Awarded vendor / supplier">
+                    </div>
                 </div>
-                <div class="field">
-                    <label>WO Date</label>
-                    <input type="date" id="m-wo-date" oninput="recalcLead()">
-                </div>
-                <div class="field">
-                    <label>Vendor Name</label>
-                    <input type="text" id="m-vendor" placeholder="Awarded vendor / supplier">
+
+                <!-- Multi-WO list — shown when split = Yes -->
+                <div class="wo-list-wrap" id="multi-wo-wrap" style="display:none;">
+                    <div class="wo-list-header">
+                        <span>Work Orders</span>
+                        <button type="button" class="btn-add-wo" onclick="addWORow()">+ Add WO</button>
+                    </div>
+                    <div id="wo-list"></div>
                 </div>
 
                 <div class="sec-label">Financial</div>
@@ -1293,11 +1333,22 @@ function renderTable(rows) {
                ${t.finalLandedCost ? `<div class="fin-landed">⚑ ${fmtINR(t.finalLandedCost)}</div>` : ''}`
             : `<span class="cell-dim">—</span>`;
 
-        const woHtml = (t.woDate || t.woNumber || t.vendorName)
-            ? `${t.woDate   ? `<div style="font-size:12px;">${fmtDate(t.woDate)}</div>` : ''}
+        let woHtml;
+        if (t.tenderSplit === 'Yes' && t.workOrders && t.workOrders.length) {
+            woHtml = t.workOrders.map(function(wo, i) {
+                return `<div style="${i>0?'margin-top:6px;border-top:1px solid var(--border);padding-top:6px;':''}">
+                    ${wo.woDate   ? `<div style="font-size:12px;">${fmtDate(wo.woDate)}</div>` : ''}
+                    ${wo.woNumber ? `<div class="cell-sub">${esc(wo.woNumber)}</div>` : ''}
+                    ${wo.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(wo.vendorName)}</div>` : ''}
+                </div>`;
+            }).join('');
+        } else if (t.woDate || t.woNumber || t.vendorName) {
+            woHtml = `${t.woDate   ? `<div style="font-size:12px;">${fmtDate(t.woDate)}</div>` : ''}
                ${t.woNumber ? `<div class="cell-sub">${esc(t.woNumber)}</div>` : ''}
-               ${t.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(t.vendorName)}</div>` : ''}`
-            : `<span class="cell-dim">—</span>`;
+               ${t.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(t.vendorName)}</div>` : ''}`;
+        } else {
+            woHtml = `<span class="cell-dim">—</span>`;
+        }
 
         return `<tr>
             <td style="color:#c5c8cf;font-size:11px;width:32px;">${i+1}</td>
@@ -1379,13 +1430,26 @@ function openEdit(id) {
     set('m-status',       t.status);
     set('m-result-date',  t.resultDate);
     set('m-pr-no',        t.prNo);
-    set('m-wo-no',        t.woNumber);
-    set('m-wo-date',      t.woDate);
-    set('m-vendor',       t.vendorName);
     set('m-val-incl',     t.valueInclGST ?? '');
     set('m-val-excl',     t.valueExclGST ?? '');
     set('m-landed',       t.finalLandedCost ?? '');
     set('m-remarks',      t.remarks);
+    // Populate WO fields based on split type
+    document.getElementById('wo-list').innerHTML = '';
+    if (t.tenderSplit === 'Yes') {
+        document.getElementById('single-wo-wrap').style.display = 'none';
+        document.getElementById('multi-wo-wrap').style.display  = '';
+        const wos = (t.workOrders && t.workOrders.length)
+            ? t.workOrders
+            : [{ woNumber: t.woNumber, woDate: t.woDate, vendorName: t.vendorName }];
+        wos.forEach(function(wo) { addWORow(wo.woNumber, wo.woDate, wo.vendorName); });
+    } else {
+        document.getElementById('single-wo-wrap').style.display = 'contents';
+        document.getElementById('multi-wo-wrap').style.display  = 'none';
+        set('m-wo-no',   t.woNumber);
+        set('m-wo-date', t.woDate);
+        set('m-vendor',  t.vendorName);
+    }
     recalcLead();
     toggleResultDate();
     show('modal-bg');
@@ -1413,12 +1477,20 @@ function resetForm() {
     document.getElementById('lead-disp').textContent = '— days';
     document.getElementById('lead-disp').style.color = 'var(--primary)';
     document.getElementById('result-date-row').style.display = 'none';
+    document.getElementById('wo-list').innerHTML = '';
+    document.getElementById('single-wo-wrap').style.display = 'contents';
+    document.getElementById('multi-wo-wrap').style.display  = 'none';
 }
 
 
 function recalcLead() {
     const a  = document.getElementById('m-allot').value;
-    const wo = document.getElementById('m-wo-date').value;
+    // Use first WO row date when split, otherwise use single WO date field
+    let wo = document.getElementById('m-wo-date').value;
+    if (get('m-split') === 'Yes') {
+        const firstRow = document.querySelector('#wo-list .wo-row');
+        if (firstRow) wo = firstRow.querySelector('.wo-date-input').value;
+    }
     const el = document.getElementById('lead-disp');
     if (a) {
         const end  = wo ? new Date(wo) : new Date();
@@ -1429,6 +1501,81 @@ function recalcLead() {
         el.textContent = '— days';
         el.style.color  = 'var(--primary)';
     }
+}
+
+function toggleSplitWO() {
+    const isSplit = get('m-split') === 'Yes';
+    const singleWrap = document.getElementById('single-wo-wrap');
+    const multiWrap  = document.getElementById('multi-wo-wrap');
+    if (isSplit) {
+        singleWrap.style.display = 'none';
+        multiWrap.style.display  = '';
+        // Seed with one empty row if list is empty
+        if (!document.querySelector('#wo-list .wo-row')) {
+            // Migrate existing single-WO values if any
+            const existingNo   = document.getElementById('m-wo-no').value;
+            const existingDate = document.getElementById('m-wo-date').value;
+            const existingVend = document.getElementById('m-vendor').value;
+            addWORow(existingNo, existingDate, existingVend);
+        }
+    } else {
+        singleWrap.style.display = 'contents';
+        multiWrap.style.display  = 'none';
+    }
+    recalcLead();
+}
+
+function addWORow(woNumber, woDate, vendorName) {
+    const list = document.getElementById('wo-list');
+    const idx  = list.children.length;
+    const div  = document.createElement('div');
+    div.className = 'wo-row';
+    div.innerHTML = `
+        <div class="field">
+            ${idx === 0 ? '<label>WO Number</label>' : '<label style="visibility:hidden">WO Number</label>'}
+            <input type="text" class="wo-no-input" placeholder="WO Number" value="${esc(woNumber||'')}">
+        </div>
+        <div class="field">
+            ${idx === 0 ? '<label>WO Date</label>' : '<label style="visibility:hidden">WO Date</label>'}
+            <input type="date" class="wo-date-input" oninput="recalcLead()" value="${esc(woDate||'')}">
+        </div>
+        <div class="field">
+            ${idx === 0 ? '<label>Vendor</label>' : '<label style="visibility:hidden">Vendor</label>'}
+            <input type="text" class="wo-vendor-input" placeholder="Vendor Name" value="${esc(vendorName||'')}">
+        </div>
+        <button type="button" class="btn-rm-wo" onclick="removeWORow(this)" title="Remove">×</button>`;
+    list.appendChild(div);
+}
+
+function removeWORow(btn) {
+    const row  = btn.closest('.wo-row');
+    const list = document.getElementById('wo-list');
+    if (list.children.length <= 1) { alert('At least one Work Order is required for a split tender.'); return; }
+    row.remove();
+    // Re-label first row headers after removal
+    refreshWOLabels();
+    recalcLead();
+}
+
+function refreshWOLabels() {
+    const rows = document.querySelectorAll('#wo-list .wo-row');
+    rows.forEach(function(row, i) {
+        const labels = row.querySelectorAll('label');
+        const vis    = i === 0 ? '' : 'hidden';
+        if (labels[0]) labels[0].style.visibility = vis;
+        if (labels[1]) labels[1].style.visibility = vis;
+        if (labels[2]) labels[2].style.visibility = vis;
+    });
+}
+
+function getWorkOrders() {
+    return Array.from(document.querySelectorAll('#wo-list .wo-row')).map(function(row) {
+        return {
+            woNumber:   row.querySelector('.wo-no-input').value.trim(),
+            woDate:     row.querySelector('.wo-date-input').value,
+            vendorName: row.querySelector('.wo-vendor-input').value.trim()
+        };
+    });
 }
 
 function toggleOtherDept() {
@@ -1457,8 +1604,21 @@ async function saveTender() {
     const name = get('m-name');
     if (!name) { alert('Name of Work is required.'); return; }
 
-    const allotDate = get('m-allot');
-    const woDate    = get('m-wo-date');
+    const allotDate  = get('m-allot');
+    const isSplit    = get('m-split') === 'Yes';
+    let woDate, woNumber, vendorName, workOrders;
+    if (isSplit) {
+        workOrders = getWorkOrders();
+        // Primary flat fields mirror first WO for FY / lead-days / backward compat
+        woDate     = workOrders[0]?.woDate     || '';
+        woNumber   = workOrders[0]?.woNumber   || '';
+        vendorName = workOrders[0]?.vendorName || '';
+    } else {
+        woDate     = get('m-wo-date');
+        woNumber   = get('m-wo-no');
+        vendorName = get('m-vendor');
+        workOrders = null;
+    }
     const data = {
         nameOfWork:      name,
         enividaNumber:   get('m-enivida'),
@@ -1479,9 +1639,10 @@ async function saveTender() {
         status:          get('m-status'),
         resultDate:      get('m-result-date'),
         prNo:            get('m-pr-no'),
-        woNumber:        get('m-wo-no'),
+        woNumber:        woNumber,
         woDate:          woDate,
-        vendorName:      get('m-vendor'),
+        vendorName:      vendorName,
+        workOrders:      workOrders,
         valueInclGST:    parseFloat(document.getElementById('m-val-incl').value) || null,
         valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
         finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
@@ -2166,12 +2327,18 @@ function exportExcel() {
         'Name of Work', 'Enivida No.', 'Tender No.', 'PR No.', 'Department',
         'Tender Mode', 'Tender Type', 'Price Type', 'Nature', 'Budget Type',
         'Shutdown Job', 'Tender Split', 'Critical', 'Status', 'Allotment Date', 'Lead Days',
-        'Result Date', 'WO Number', 'WO Date', 'Vendor Name',
+        'Result Date', 'WO Number', 'WO Date', 'Vendor Name', 'All WOs (split)',
         'Est. Value (incl. GST)', 'Est. Value (excl. GST)', 'Final Landed Cost',
         'File Handler', 'Financial Year', 'Remarks'
     ];
 
-    const dataRows = filteredRows.map(t => [
+    const dataRows = filteredRows.map(t => {
+        const allWOs = (t.tenderSplit === 'Yes' && t.workOrders && t.workOrders.length > 1)
+            ? t.workOrders.map(function(wo, i) {
+                return `WO${i+1}: ${[wo.woNumber, wo.woDate, wo.vendorName].filter(Boolean).join(' | ')}`;
+              }).join('\n')
+            : '';
+        return [
         t.nameOfWork      || '',
         t.enividaNumber   || '',
         t.tenderNumber    || '',
@@ -2192,21 +2359,23 @@ function exportExcel() {
         t.woNumber        || '',
         t.woDate          || '',
         t.vendorName      || '',
+        allWOs,
         t.valueInclGST    != null ? t.valueInclGST    : '',
         t.valueExclGST    != null ? t.valueExclGST    : '',
         t.finalLandedCost != null ? t.finalLandedCost : '',
         t.fileHandler     || '',
         t.financialYear   || '',
         t.remarks         || ''
-    ]);
+        ];
+    });
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
 
     ws['!cols'] = [
         {wch:40},{wch:14},{wch:18},{wch:14},{wch:22},{wch:12},{wch:30},
         {wch:10},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},
-        {wch:14},{wch:18},{wch:14},{wch:20},{wch:22},{wch:22},{wch:18},
-        {wch:20},{wch:12},{wch:35}
+        {wch:14},{wch:10},{wch:14},{wch:18},{wch:14},{wch:22},{wch:40},
+        {wch:22},{wch:22},{wch:22},{wch:18},{wch:12},{wch:35}
     ];
 
     const wb = XLSX.utils.book_new();
