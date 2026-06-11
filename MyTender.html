@@ -393,7 +393,7 @@
         }
         .btn-add-wo:hover { background: var(--primary); color: #fff; }
         .wo-row {
-            display: grid; grid-template-columns: 1fr 140px 1fr 32px;
+            display: grid; grid-template-columns: 1fr 130px 1fr 120px 32px;
             gap: 8px; margin-bottom: 8px; align-items: end;
         }
         .wo-row .field label { font-size: 10px; }
@@ -403,6 +403,11 @@
             display: flex; align-items: center; justify-content: center;
         }
         .wo-row .btn-rm-wo:hover { background: #fff0f0; }
+        .wo-total {
+            font-size: 12px; font-weight: 600; color: var(--primary);
+            text-align: right; margin-top: 4px; padding: 6px 10px;
+            background: #f0f4ff; border-radius: 6px;
+        }
 
         .modal-foot {
             padding: 14px 26px; border-top: 1px solid var(--border);
@@ -932,6 +937,7 @@
                         <button type="button" class="btn-add-wo" onclick="addWORow()">+ Add WO</button>
                     </div>
                     <div id="wo-list"></div>
+                    <div class="wo-total" id="wo-total" style="display:none;"></div>
                 </div>
 
                 <div class="sec-label">Financial</div>
@@ -944,7 +950,7 @@
                     <label>Estimate Value (excl. GST) ₹</label>
                     <input type="number" id="m-val-excl" placeholder="0" min="0" step="1">
                 </div>
-                <div class="field">
+                <div class="field" id="landed-wrap">
                     <label>Final Landed Cost ₹</label>
                     <input type="number" id="m-landed" placeholder="0" min="0" step="1">
                 </div>
@@ -1340,6 +1346,7 @@ function renderTable(rows) {
                     ${wo.woDate   ? `<div style="font-size:12px;">${fmtDate(wo.woDate)}</div>` : ''}
                     ${wo.woNumber ? `<div class="cell-sub">${esc(wo.woNumber)}</div>` : ''}
                     ${wo.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(wo.vendorName)}</div>` : ''}
+                    ${wo.landedCost != null ? `<div class="cell-sub" style="color:var(--primary);font-weight:600;">⚑ ${fmtINR(wo.landedCost)}</div>` : ''}
                 </div>`;
             }).join('');
         } else if (t.woDate || t.woNumber || t.vendorName) {
@@ -1439,13 +1446,15 @@ function openEdit(id) {
     if (t.tenderSplit === 'Yes') {
         document.getElementById('single-wo-wrap').style.display = 'none';
         document.getElementById('multi-wo-wrap').style.display  = '';
+        document.getElementById('landed-wrap').style.display    = 'none';
         const wos = (t.workOrders && t.workOrders.length)
             ? t.workOrders
-            : [{ woNumber: t.woNumber, woDate: t.woDate, vendorName: t.vendorName }];
-        wos.forEach(function(wo) { addWORow(wo.woNumber, wo.woDate, wo.vendorName); });
+            : [{ woNumber: t.woNumber, woDate: t.woDate, vendorName: t.vendorName, landedCost: t.finalLandedCost }];
+        wos.forEach(function(wo) { addWORow(wo.woNumber, wo.woDate, wo.vendorName, wo.landedCost); });
     } else {
         document.getElementById('single-wo-wrap').style.display = 'contents';
         document.getElementById('multi-wo-wrap').style.display  = 'none';
+        document.getElementById('landed-wrap').style.display    = '';
         set('m-wo-no',   t.woNumber);
         set('m-wo-date', t.woDate);
         set('m-vendor',  t.vendorName);
@@ -1478,6 +1487,8 @@ function resetForm() {
     document.getElementById('lead-disp').style.color = 'var(--primary)';
     document.getElementById('result-date-row').style.display = 'none';
     document.getElementById('wo-list').innerHTML = '';
+    document.getElementById('wo-total').style.display = 'none';
+    document.getElementById('landed-wrap').style.display = '';
     document.getElementById('single-wo-wrap').style.display = 'contents';
     document.getElementById('multi-wo-wrap').style.display  = 'none';
 }
@@ -1513,23 +1524,27 @@ function toggleSplitWO() {
         // Seed with one empty row if list is empty
         if (!document.querySelector('#wo-list .wo-row')) {
             // Migrate existing single-WO values if any
-            const existingNo   = document.getElementById('m-wo-no').value;
-            const existingDate = document.getElementById('m-wo-date').value;
-            const existingVend = document.getElementById('m-vendor').value;
-            addWORow(existingNo, existingDate, existingVend);
+            const existingNo     = document.getElementById('m-wo-no').value;
+            const existingDate   = document.getElementById('m-wo-date').value;
+            const existingVend   = document.getElementById('m-vendor').value;
+            const existingLanded = document.getElementById('m-landed').value;
+            addWORow(existingNo, existingDate, existingVend, existingLanded || null);
         }
+        document.getElementById('landed-wrap').style.display = 'none';
     } else {
         singleWrap.style.display = 'contents';
         multiWrap.style.display  = 'none';
+        document.getElementById('landed-wrap').style.display = '';
     }
     recalcLead();
 }
 
-function addWORow(woNumber, woDate, vendorName) {
+function addWORow(woNumber, woDate, vendorName, landedCost) {
     const list = document.getElementById('wo-list');
     const idx  = list.children.length;
     const div  = document.createElement('div');
     div.className = 'wo-row';
+    const lv = landedCost != null && landedCost !== '' ? landedCost : '';
     div.innerHTML = `
         <div class="field">
             ${idx === 0 ? '<label>WO Number</label>' : '<label style="visibility:hidden">WO Number</label>'}
@@ -1543,8 +1558,14 @@ function addWORow(woNumber, woDate, vendorName) {
             ${idx === 0 ? '<label>Vendor</label>' : '<label style="visibility:hidden">Vendor</label>'}
             <input type="text" class="wo-vendor-input" placeholder="Vendor Name" value="${esc(vendorName||'')}">
         </div>
+        <div class="field">
+            ${idx === 0 ? '<label>Landed Cost ₹</label>' : '<label style="visibility:hidden">Landed Cost ₹</label>'}
+            <input type="number" class="wo-landed-input" placeholder="0" min="0" step="1"
+                oninput="recalcWOTotal()" value="${lv}">
+        </div>
         <button type="button" class="btn-rm-wo" onclick="removeWORow(this)" title="Remove">×</button>`;
     list.appendChild(div);
+    recalcWOTotal();
 }
 
 function removeWORow(btn) {
@@ -1552,9 +1573,9 @@ function removeWORow(btn) {
     const list = document.getElementById('wo-list');
     if (list.children.length <= 1) { alert('At least one Work Order is required for a split tender.'); return; }
     row.remove();
-    // Re-label first row headers after removal
     refreshWOLabels();
     recalcLead();
+    recalcWOTotal();
 }
 
 function refreshWOLabels() {
@@ -1562,18 +1583,30 @@ function refreshWOLabels() {
     rows.forEach(function(row, i) {
         const labels = row.querySelectorAll('label');
         const vis    = i === 0 ? '' : 'hidden';
-        if (labels[0]) labels[0].style.visibility = vis;
-        if (labels[1]) labels[1].style.visibility = vis;
-        if (labels[2]) labels[2].style.visibility = vis;
+        labels.forEach(function(l) { l.style.visibility = vis; });
     });
+}
+
+function recalcWOTotal() {
+    const total = Array.from(document.querySelectorAll('#wo-list .wo-landed-input'))
+        .reduce(function(sum, inp) { return sum + (parseFloat(inp.value) || 0); }, 0);
+    const el = document.getElementById('wo-total');
+    if (total > 0) {
+        el.style.display = '';
+        el.textContent = 'Total Landed Cost: ₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    } else {
+        el.style.display = 'none';
+    }
 }
 
 function getWorkOrders() {
     return Array.from(document.querySelectorAll('#wo-list .wo-row')).map(function(row) {
+        const lc = parseFloat(row.querySelector('.wo-landed-input').value) || null;
         return {
-            woNumber:   row.querySelector('.wo-no-input').value.trim(),
-            woDate:     row.querySelector('.wo-date-input').value,
-            vendorName: row.querySelector('.wo-vendor-input').value.trim()
+            woNumber:    row.querySelector('.wo-no-input').value.trim(),
+            woDate:      row.querySelector('.wo-date-input').value,
+            vendorName:  row.querySelector('.wo-vendor-input').value.trim(),
+            landedCost:  lc
         };
     });
 }
@@ -1613,6 +1646,9 @@ async function saveTender() {
         woDate     = workOrders[0]?.woDate     || '';
         woNumber   = workOrders[0]?.woNumber   || '';
         vendorName = workOrders[0]?.vendorName || '';
+        // Sum per-WO landed costs into the top-level field used by stats
+        const totalLanded = workOrders.reduce(function(s, w) { return s + (w.landedCost || 0); }, 0);
+        if (totalLanded > 0) document.getElementById('m-landed').value = totalLanded;
     } else {
         woDate     = get('m-wo-date');
         woNumber   = get('m-wo-no');
@@ -2333,9 +2369,11 @@ function exportExcel() {
     ];
 
     const dataRows = filteredRows.map(t => {
-        const allWOs = (t.tenderSplit === 'Yes' && t.workOrders && t.workOrders.length > 1)
+        const allWOs = (t.tenderSplit === 'Yes' && t.workOrders && t.workOrders.length)
             ? t.workOrders.map(function(wo, i) {
-                return `WO${i+1}: ${[wo.woNumber, wo.woDate, wo.vendorName].filter(Boolean).join(' | ')}`;
+                const parts = [wo.woNumber, wo.woDate, wo.vendorName,
+                               wo.landedCost != null ? '₹' + Number(wo.landedCost).toLocaleString('en-IN') : ''];
+                return `WO${i+1}: ${parts.filter(Boolean).join(' | ')}`;
               }).join('\n')
             : '';
         return [
