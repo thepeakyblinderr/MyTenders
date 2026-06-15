@@ -717,6 +717,23 @@
                 <option value="">All</option>
                 <option value="Yes">🚨 Critical Only</option>
             </select>
+            <select class="filter" id="f-type" onchange="applyFilters()">
+                <option value="">All Types</option>
+                <option>Open Tender</option>
+                <option>Limited Tender</option>
+                <option>Single Tender</option>
+                <option>EOI</option>
+            </select>
+            <select class="filter" id="f-budget" onchange="applyFilters()">
+                <option value="">All Budget</option>
+                <option value="AF">AF Only</option>
+                <option value="Revenue">Revenue Only</option>
+            </select>
+            <select class="filter" id="f-split" onchange="applyFilters()">
+                <option value="">All</option>
+                <option value="Yes">Split Only</option>
+                <option value="No">Non-Split</option>
+            </select>
             <button class="btn btn-outline" onclick="clearFilters()">✕ Clear</button>
             <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
             <button class="btn btn-outline" onclick="openImport()" title="Import tenders from Excel">⬆ Import Excel</button>
@@ -1165,8 +1182,9 @@ function toast(msg) {
 
 // ── FILTERS ────────────────────────────────────────────
 function rebuildFilters() {
-    const fys  = [...new Set(tenders.map(t=>t.financialYear).filter(Boolean))].sort().reverse();
+    const fys   = [...new Set(tenders.map(t=>t.financialYear).filter(Boolean))].sort().reverse();
     const depts = [...new Set(tenders.map(t=>t.department).filter(Boolean))].sort();
+    const types = [...new Set(tenders.map(t=>t.tenderType).filter(Boolean))].sort();
 
     const fyEl = document.getElementById('f-fy');
     const curFY = fyEl.value;
@@ -1177,6 +1195,11 @@ function rebuildFilters() {
     const curD = dEl.value;
     dEl.innerHTML = '<option value="">All Departments</option>' + depts.map(v=>`<option>${esc(v)}</option>`).join('');
     dEl.value = curD;
+
+    const tEl = document.getElementById('f-type');
+    const curT = tEl.value;
+    tEl.innerHTML = '<option value="">All Types</option>' + types.map(v=>`<option>${esc(v)}</option>`).join('');
+    tEl.value = curT;
 }
 
 function applyFilters() {
@@ -1186,9 +1209,13 @@ function applyFilters() {
     const mode     = document.getElementById('f-mode').value;
     const dept     = document.getElementById('f-dept').value;
     const critical = document.getElementById('f-critical').value;
+    const type     = document.getElementById('f-type').value;
+    const budget   = document.getElementById('f-budget').value;
+    const split    = document.getElementById('f-split').value;
 
-    const rows = tenders.filter(t => {
-        if (q && ![
+    function matchSearch(t) {
+        if (!q) return true;
+        return [
             t.nameOfWork, t.tenderNumber, t.enividaNumber, t.department,
             t.fileHandler, t.tenderMode, t.tenderType, t.priceType,
             t.nature, t.status, t.financialYear, t.remarks,
@@ -1198,33 +1225,33 @@ function applyFilters() {
             t.valueInclGST    != null ? String(t.valueInclGST)    : '',
             t.valueExclGST    != null ? String(t.valueExclGST)    : '',
             t.leadDays        != null ? String(t.leadDays)        : ''
-        ].some(v => (v||'').toLowerCase().includes(q))) return false;
+        ].some(v => (v||'').toLowerCase().includes(q));
+    }
+
+    const rows = tenders.filter(t => {
+        if (!matchSearch(t))                        return false;
         if (stat     && t.status      !== stat)     return false;
         if (fy       && t.financialYear !== fy)     return false;
         if (mode     && t.tenderMode  !== mode)     return false;
         if (dept     && t.department  !== dept)     return false;
         if (critical && t.isCritical  !== critical) return false;
+        if (type     && t.tenderType  !== type)     return false;
+        if (budget   && t.budgetType  !== budget)   return false;
+        if (split    && t.tenderSplit !== split)    return false;
         return true;
     });
 
     // Stats count from all tenders matching every filter EXCEPT status
     // so Cancelled/Awarded/In Progress counts are always visible regardless of status filter
     const statsRows = tenders.filter(t => {
-        if (q && ![
-            t.nameOfWork, t.tenderNumber, t.enividaNumber, t.department,
-            t.fileHandler, t.tenderMode, t.tenderType, t.priceType,
-            t.nature, t.status, t.financialYear, t.remarks,
-            t.allotmentDate, t.resultDate, t.shutdownJob, t.budgetType, t.tenderSplit,
-            t.prNo, t.woNumber, t.woDate, t.vendorName, t.isCritical,
-            t.finalLandedCost != null ? String(t.finalLandedCost) : '',
-            t.valueInclGST    != null ? String(t.valueInclGST)    : '',
-            t.valueExclGST    != null ? String(t.valueExclGST)    : '',
-            t.leadDays        != null ? String(t.leadDays)        : ''
-        ].some(v => (v||'').toLowerCase().includes(q))) return false;
+        if (!matchSearch(t))                        return false;
         if (fy       && t.financialYear !== fy)     return false;
         if (mode     && t.tenderMode  !== mode)     return false;
         if (dept     && t.department  !== dept)     return false;
         if (critical && t.isCritical  !== critical) return false;
+        if (type     && t.tenderType  !== type)     return false;
+        if (budget   && t.budgetType  !== budget)   return false;
+        if (split    && t.tenderSplit !== split)    return false;
         return true;
     });
 
@@ -1757,6 +1784,9 @@ function clearFilters() {
     document.getElementById('f-mode').value = '';
     document.getElementById('f-dept').value = '';
     document.getElementById('f-critical').value = '';
+    document.getElementById('f-type').value     = '';
+    document.getElementById('f-budget').value   = '';
+    document.getElementById('f-split').value    = '';
     applyFilters();
 }
 
