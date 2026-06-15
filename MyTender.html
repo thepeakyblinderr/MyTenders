@@ -713,26 +713,18 @@
             <select class="filter" id="f-dept" onchange="applyFilters()">
                 <option value="">All Departments</option>
             </select>
-            <select class="filter" id="f-critical" onchange="applyFilters()">
-                <option value="">All</option>
-                <option value="Yes">🚨 Critical Only</option>
-            </select>
             <select class="filter" id="f-type" onchange="applyFilters()">
                 <option value="">All Types</option>
-                <option>Open Tender</option>
-                <option>Limited Tender</option>
-                <option>Single Tender</option>
-                <option>EOI</option>
             </select>
             <select class="filter" id="f-budget" onchange="applyFilters()">
                 <option value="">All Budget</option>
                 <option value="AF">AF Only</option>
                 <option value="Revenue">Revenue Only</option>
             </select>
-            <select class="filter" id="f-split" onchange="applyFilters()">
+            <select class="filter" id="f-flags" onchange="applyFilters()">
                 <option value="">All</option>
-                <option value="Yes">Split Only</option>
-                <option value="No">Non-Split</option>
+                <option value="critical">🚨 Critical Only</option>
+                <option value="split">Split Only</option>
             </select>
             <button class="btn btn-outline" onclick="clearFilters()">✕ Clear</button>
             <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
@@ -1204,14 +1196,13 @@ function rebuildFilters() {
 
 function applyFilters() {
     const q        = get('search-input').toLowerCase();
-    const stat     = document.getElementById('f-status').value;
-    const fy       = document.getElementById('f-fy').value;
-    const mode     = document.getElementById('f-mode').value;
-    const dept     = document.getElementById('f-dept').value;
-    const critical = document.getElementById('f-critical').value;
-    const type     = document.getElementById('f-type').value;
-    const budget   = document.getElementById('f-budget').value;
-    const split    = document.getElementById('f-split').value;
+    const stat   = document.getElementById('f-status').value;
+    const fy     = document.getElementById('f-fy').value;
+    const mode   = document.getElementById('f-mode').value;
+    const dept   = document.getElementById('f-dept').value;
+    const type   = document.getElementById('f-type').value;
+    const budget = document.getElementById('f-budget').value;
+    const flags  = document.getElementById('f-flags').value; // 'critical' | 'split' | ''
 
     function matchSearch(t) {
         if (!q) return true;
@@ -1228,30 +1219,34 @@ function applyFilters() {
         ].some(v => (v||'').toLowerCase().includes(q));
     }
 
+    function matchFlags(t) {
+        if (flags === 'critical') return t.isCritical === 'Yes';
+        if (flags === 'split')    return t.tenderSplit === 'Yes';
+        return true;
+    }
+
     const rows = tenders.filter(t => {
-        if (!matchSearch(t))                        return false;
-        if (stat     && t.status      !== stat)     return false;
-        if (fy       && t.financialYear !== fy)     return false;
-        if (mode     && t.tenderMode  !== mode)     return false;
-        if (dept     && t.department  !== dept)     return false;
-        if (critical && t.isCritical  !== critical) return false;
-        if (type     && t.tenderType  !== type)     return false;
-        if (budget   && t.budgetType  !== budget)   return false;
-        if (split    && t.tenderSplit !== split)    return false;
+        if (!matchSearch(t))                    return false;
+        if (stat   && t.status      !== stat)   return false;
+        if (fy     && t.financialYear !== fy)   return false;
+        if (mode   && t.tenderMode  !== mode)   return false;
+        if (dept   && t.department  !== dept)   return false;
+        if (type   && t.tenderType  !== type)   return false;
+        if (budget && t.budgetType  !== budget) return false;
+        if (!matchFlags(t))                     return false;
         return true;
     });
 
     // Stats count from all tenders matching every filter EXCEPT status
     // so Cancelled/Awarded/In Progress counts are always visible regardless of status filter
     const statsRows = tenders.filter(t => {
-        if (!matchSearch(t))                        return false;
-        if (fy       && t.financialYear !== fy)     return false;
-        if (mode     && t.tenderMode  !== mode)     return false;
-        if (dept     && t.department  !== dept)     return false;
-        if (critical && t.isCritical  !== critical) return false;
-        if (type     && t.tenderType  !== type)     return false;
-        if (budget   && t.budgetType  !== budget)   return false;
-        if (split    && t.tenderSplit !== split)    return false;
+        if (!matchSearch(t))                    return false;
+        if (fy     && t.financialYear !== fy)   return false;
+        if (mode   && t.tenderMode  !== mode)   return false;
+        if (dept   && t.department  !== dept)   return false;
+        if (type   && t.tenderType  !== type)   return false;
+        if (budget && t.budgetType  !== budget) return false;
+        if (!matchFlags(t))                     return false;
         return true;
     });
 
@@ -1783,15 +1778,14 @@ function clearFilters() {
     document.getElementById('f-fy').value = '';
     document.getElementById('f-mode').value = '';
     document.getElementById('f-dept').value = '';
-    document.getElementById('f-critical').value = '';
-    document.getElementById('f-type').value     = '';
-    document.getElementById('f-budget').value   = '';
-    document.getElementById('f-split').value    = '';
+    document.getElementById('f-type').value   = '';
+    document.getElementById('f-budget').value = '';
+    document.getElementById('f-flags').value  = '';
     applyFilters();
 }
 
 function filterCritical() {
-    document.getElementById('f-critical').value = 'Yes';
+    document.getElementById('f-flags').value  = 'critical';
     document.getElementById('f-status').value = '';
     applyFilters();
 }
