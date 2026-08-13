@@ -521,14 +521,34 @@ input:focus, select:focus, textarea:focus {
 .hidden { display:none !important; }
 
 /* ── BRIEFING VIEW ── */
-.view-toggle { display:flex; gap:6px; margin-bottom:16px; }
+.main-topbar {
+    display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:wrap;
+}
+.view-toggle { display:flex; gap:6px; flex-shrink:0; }
 .vt-btn {
-    padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600;
+    padding:6px 16px; border-radius:20px; font-size:13px; font-weight:600;
     cursor:pointer; border:1px solid var(--sep); background:transparent;
     color:var(--text-sub); font-family:inherit; transition:all .15s;
 }
 .vt-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
 .vt-btn:not(.active):hover { border-color:var(--primary); color:var(--primary); }
+.topbar-sep { width:1px; height:24px; background:var(--sep); flex-shrink:0; margin:0 2px; }
+.topbar-filter {
+    padding:5px 28px 5px 10px; border:1px solid var(--sep); border-radius:20px;
+    font-size:12.5px; background:var(--card); color:var(--text);
+    -webkit-appearance:none; appearance:none; cursor:pointer; font-family:inherit;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23aeaeb2' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 8px center;
+    transition:border-color .15s;
+}
+.topbar-filter:focus { border-color:var(--primary); outline:none; }
+.topbar-filter.active-filter { border-color:var(--primary); color:var(--primary); font-weight:600; }
+.topbar-clear {
+    padding:5px 12px; border:1px solid var(--sep); border-radius:20px;
+    background:transparent; color:var(--text-sub); font-size:12px;
+    cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap;
+}
+.topbar-clear:hover { border-color:var(--red); color:var(--red); }
 
 .bf-grid {
     display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:16px;
@@ -546,7 +566,7 @@ input:focus, select:focus, textarea:focus {
     font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;
     background:var(--bg); color:var(--text-sub);
 }
-.bf-body { max-height:340px; overflow-y:auto; }
+.bf-body { max-height:240px; overflow-y:auto; }
 .bf-row {
     display:flex; align-items:center; gap:10px; padding:10px 14px;
     border-bottom:1px solid var(--sep); cursor:pointer; transition:background .12s;
@@ -781,10 +801,28 @@ input:focus, select:focus, textarea:focus {
         <!-- Key Dates Bar -->
         <div id="key-dates-bar" style="display:none;"></div>
 
-        <!-- View toggle -->
-        <div class="view-toggle">
-            <button class="vt-btn active" id="vt-briefing" onclick="setMainView('briefing')">⚡ Briefing</button>
-            <button class="vt-btn" id="vt-cards" onclick="setMainView('cards')">🗂 All Tenders</button>
+        <!-- Main topbar: view toggle + quick filters -->
+        <div class="main-topbar">
+            <div class="view-toggle">
+                <button class="vt-btn active" id="vt-briefing" onclick="setMainView('briefing')">⚡ Briefing</button>
+                <button class="vt-btn" id="vt-cards" onclick="setMainView('cards')">🗂 All Tenders</button>
+            </div>
+            <div class="topbar-sep"></div>
+            <select class="topbar-filter" id="tf-status" onchange="syncTopbarFilter('status',this.value)">
+                <option value="">All Status</option>
+                <option value="In Progress" selected>In Progress</option>
+                <option value="Awarded">Awarded</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+            <select class="topbar-filter" id="tf-flags" onchange="syncTopbarFilter('flags',this.value)">
+                <option value="">All</option>
+                <option value="critical">🚨 Critical</option>
+                <option value="split">Split</option>
+            </select>
+            <select class="topbar-filter" id="tf-stage" onchange="syncTopbarFilter('stage',this.value)">
+                <option value="">All Stages</option>
+            </select>
+            <button class="topbar-clear" onclick="clearFilters()">✕ Clear</button>
         </div>
 
         <!-- ── BRIEFING PANEL (default) ── -->
@@ -1471,6 +1509,7 @@ function applyFilters() {
     updateDashboard(statsRows);
     renderTable(rows);
     renderKeyDatesBar();
+    syncTopbarFromSidebar();
     if (_mainView === 'briefing') renderBriefing();
 }
 
@@ -1973,11 +2012,43 @@ document.addEventListener('click', function(e) {
 });
 
 function buildStageFilter() {
+    const opts = '<option value="">All Stages</option>' +
+        STAGES.map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('');
     const el = document.getElementById('f-stage');
     const cur = el.value;
-    el.innerHTML = '<option value="">All Stages</option>' +
-        STAGES.map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('');
+    el.innerHTML = opts;
     el.value = cur;
+    const tel = document.getElementById('tf-stage');
+    if (tel) { const tcur = tel.value; tel.innerHTML = opts; tel.value = tcur; }
+}
+
+function syncTopbarFilter(field, value) {
+    if (field === 'status') {
+        document.getElementById('f-status').value = value;
+        const tf = document.getElementById('tf-status');
+        if (tf) tf.classList.toggle('active-filter', !!value);
+    } else if (field === 'flags') {
+        document.getElementById('f-flags').value = value;
+        const tf = document.getElementById('tf-flags');
+        if (tf) tf.classList.toggle('active-filter', !!value);
+    } else if (field === 'stage') {
+        document.getElementById('f-stage').value = value;
+        const tf = document.getElementById('tf-stage');
+        if (tf) tf.classList.toggle('active-filter', !!value);
+    }
+    applyFilters();
+}
+
+function syncTopbarFromSidebar() {
+    const ts = document.getElementById('tf-status');
+    const tf = document.getElementById('tf-flags');
+    const tst = document.getElementById('tf-stage');
+    if (ts)  { ts.value  = document.getElementById('f-status').value;
+               ts.classList.toggle('active-filter', !!ts.value); }
+    if (tf)  { tf.value  = document.getElementById('f-flags').value;
+               tf.classList.toggle('active-filter', !!tf.value); }
+    if (tst) { tst.value = document.getElementById('f-stage').value;
+               tst.classList.toggle('active-filter', !!tst.value); }
 }
 
 // ── MODAL ──────────────────────────────────────────────
@@ -2355,6 +2426,9 @@ function clearFilters() {
     document.getElementById('f-budget').value = '';
     document.getElementById('f-flags').value  = '';
     document.getElementById('f-stage').value  = '';
+    const tf = document.getElementById('tf-status');  if (tf)  { tf.value  = ''; tf.classList.remove('active-filter'); }
+    const tfl = document.getElementById('tf-flags');  if (tfl) { tfl.value = ''; tfl.classList.remove('active-filter'); }
+    const tst = document.getElementById('tf-stage');  if (tst) { tst.value = ''; tst.classList.remove('active-filter'); }
     applyFilters();
 }
 
