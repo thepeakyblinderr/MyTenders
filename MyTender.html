@@ -519,6 +519,59 @@ input:focus, select:focus, textarea:focus {
 
 /* ── UTILS ── */
 .hidden { display:none !important; }
+
+/* ── BRIEFING VIEW ── */
+.view-toggle { display:flex; gap:6px; margin-bottom:16px; }
+.vt-btn {
+    padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600;
+    cursor:pointer; border:1px solid var(--sep); background:transparent;
+    color:var(--text-sub); font-family:inherit; transition:all .15s;
+}
+.vt-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.vt-btn:not(.active):hover { border-color:var(--primary); color:var(--primary); }
+
+.bf-grid {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px;
+}
+.bf-card {
+    background:var(--card); border-radius:var(--radius);
+    border:1px solid var(--sep); box-shadow:var(--shadow-sm); overflow:hidden;
+}
+.bf-head {
+    padding:12px 16px 10px; border-bottom:1px solid var(--sep);
+    display:flex; align-items:center; justify-content:space-between;
+}
+.bf-head-title { font-size:13px; font-weight:700; color:var(--text); }
+.bf-head-count {
+    font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;
+    background:var(--bg); color:var(--text-sub);
+}
+.bf-body { max-height:340px; overflow-y:auto; }
+.bf-row {
+    display:flex; align-items:center; gap:10px; padding:10px 14px;
+    border-bottom:1px solid var(--sep); cursor:pointer; transition:background .12s;
+}
+.bf-row:last-child { border-bottom:none; }
+.bf-row:hover { background:var(--bg); }
+.bf-row-left { flex:1; min-width:0; }
+.bf-row-title {
+    font-size:13px; font-weight:600; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.bf-row-sub { font-size:11px; color:var(--text-sub); margin-top:2px; }
+.bf-badge {
+    flex-shrink:0; font-size:11px; font-weight:700;
+    padding:2px 9px; border-radius:10px; white-space:nowrap;
+}
+.bf-bar-wrap { flex-shrink:0; width:48px; height:4px; background:var(--sep); border-radius:2px; }
+.bf-bar { height:100%; border-radius:2px; }
+.bf-empty { padding:28px 16px; text-align:center; color:var(--text-sub); font-size:13px; }
+.stuck-ok    { background:rgba(52,199,89,.15);  color:#1a7a35; }
+.stuck-warn  { background:rgba(255,149,0,.15);  color:#a05e00; }
+.stuck-crit  { background:rgba(255,59,48,.12);  color:#c5221f; }
+.date-today  { background:rgba(255,59,48,.12);  color:#c5221f; }
+.date-soon   { background:rgba(255,149,0,.12);  color:#a05e00; }
+.date-week   { background:var(--primary-dim);   color:var(--primary); }
     </style>
 </head>
 <body>
@@ -728,28 +781,66 @@ input:focus, select:focus, textarea:focus {
         <!-- Key Dates Bar -->
         <div id="key-dates-bar" style="display:none;"></div>
 
-        <!-- Search bar + count -->
-        <div class="main-toolbar">
-            <div class="search-wrap">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input type="text" id="search-input" placeholder="Search any field…" oninput="applyFilters()">
+        <!-- View toggle -->
+        <div class="view-toggle">
+            <button class="vt-btn active" id="vt-briefing" onclick="setMainView('briefing')">⚡ Briefing</button>
+            <button class="vt-btn" id="vt-cards" onclick="setMainView('cards')">🗂 All Tenders</button>
+        </div>
+
+        <!-- ── BRIEFING PANEL (default) ── -->
+        <div id="briefing-panel">
+            <div class="bf-grid">
+                <div class="bf-card">
+                    <div class="bf-head">
+                        <span class="bf-head-title">🗂 Stage Congestion</span>
+                        <span class="bf-head-count" id="bf-stage-count"></span>
+                    </div>
+                    <div class="bf-body" id="bf-stages"></div>
+                </div>
+                <div class="bf-card">
+                    <div class="bf-head">
+                        <span class="bf-head-title">⏱ Stuck Tenders</span>
+                        <span class="bf-head-count" id="bf-stuck-count"></span>
+                    </div>
+                    <div class="bf-body" id="bf-stuck"></div>
+                </div>
+                <div class="bf-card">
+                    <div class="bf-head">
+                        <span class="bf-head-title">📅 Upcoming (7 days)</span>
+                        <span class="bf-head-count" id="bf-dates-count"></span>
+                    </div>
+                    <div class="bf-body" id="bf-dates"></div>
+                </div>
             </div>
-            <span class="results-count" id="tbl-count"></span>
         </div>
 
-        <!-- Status / empty / card list -->
-        <div id="tbl-status" class="status-bar">Connecting…</div>
+        <!-- ── CARDS VIEW (hidden by default) ── -->
+        <div id="cards-view" style="display:none;">
 
-        <div id="tbl-empty" class="empty-state hidden">
-            <div class="icon">📂</div>
-            <h3>No tenders found</h3>
-            <p>Add your first tender or adjust the filters.</p>
-        </div>
+            <!-- Search bar + count -->
+            <div class="main-toolbar">
+                <div class="search-wrap">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Search any field…" oninput="applyFilters()">
+                </div>
+                <span class="results-count" id="tbl-count"></span>
+            </div>
 
-        <div id="tbl-scroll" class="hidden">
-            <div id="tbl-body"></div>
+            <!-- Status / empty / card list -->
+            <div id="tbl-status" class="status-bar">Connecting…</div>
+
+            <div id="tbl-empty" class="empty-state hidden">
+                <div class="icon">📂</div>
+                <h3>No tenders found</h3>
+                <p>Add your first tender or adjust the filters.</p>
+            </div>
+
+            <div id="tbl-scroll" class="hidden">
+                <div id="tbl-body"></div>
+            </div>
+
         </div>
 
     </main>
@@ -1373,6 +1464,128 @@ function applyFilters() {
     updateDashboard(statsRows);
     renderTable(rows);
     renderKeyDatesBar();
+    if (_mainView === 'briefing') renderBriefing();
+}
+
+// ── VIEW TOGGLE ────────────────────────────────────────
+var _mainView = 'briefing';
+
+function setMainView(v) {
+    _mainView = v;
+    var briefing  = document.getElementById('briefing-panel');
+    var cardsView = document.getElementById('cards-view');
+    var btnB = document.getElementById('vt-briefing');
+    var btnC = document.getElementById('vt-cards');
+    if (v === 'briefing') {
+        briefing.style.display  = '';
+        cardsView.style.display = 'none';
+        btnB.classList.add('active');
+        btnC.classList.remove('active');
+        renderBriefing();
+    } else {
+        briefing.style.display  = 'none';
+        cardsView.style.display = '';
+        btnC.classList.add('active');
+        btnB.classList.remove('active');
+        applyFilters();
+    }
+}
+
+function renderBriefing() {
+    var todayStr = new Date().toISOString().slice(0, 10);
+    var in7Str   = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+    // ── 1. Stage Congestion ──────────────────────────────
+    var stageMap = {};
+    STAGES.forEach(function(s) { stageMap[s.id] = []; });
+    tenders.forEach(function(t) {
+        normalizeStages(t.tenderStages || []).forEach(function(st) {
+            if (stageMap[st.id]) stageMap[st.id].push(t);
+        });
+    });
+    var congested = STAGES
+        .map(function(s) { return { s: s, items: stageMap[s.id] }; })
+        .filter(function(x) { return x.items.length > 0; })
+        .sort(function(a, b) { return b.items.length - a.items.length; });
+    var maxCnt = congested.length ? congested[0].items.length : 1;
+
+    document.getElementById('bf-stage-count').textContent = congested.length + ' active';
+    document.getElementById('bf-stages').innerHTML = congested.length
+        ? congested.map(function(x) {
+            var pct = Math.round(x.items.length / maxCnt * 100);
+            var col = x.s.color || 'var(--primary)';
+            return '<div class="bf-row" onclick="setMainView(\'cards\');document.getElementById(\'f-stage\').value=\'' + x.s.id + '\';applyFilters()">' +
+                '<span style="width:9px;height:9px;border-radius:50%;background:' + col + ';flex-shrink:0;display:inline-block;"></span>' +
+                '<div class="bf-row-left"><div class="bf-row-title">' + esc(x.s.label) + '</div></div>' +
+                '<div class="bf-bar-wrap"><div class="bf-bar" style="width:' + pct + '%;background:' + col + ';"></div></div>' +
+                '<span class="bf-badge" style="background:' + col + '22;color:' + col + ';">' + x.items.length + '</span>' +
+                '</div>';
+        }).join('')
+        : '<div class="bf-empty">No active pipeline stages</div>';
+
+    // ── 2. Stuck Tenders (>14 days in same stage) ───────
+    var stuckList = [];
+    tenders.forEach(function(t) {
+        normalizeStages(t.tenderStages || []).forEach(function(st) {
+            var days = stageDays(st.enteredAt);
+            if (days === null || days < OVERDUE_DAYS) return;
+            var info = STAGES.find(function(x) { return x.id === st.id; });
+            if (!info) return;
+            stuckList.push({ t: t, info: info, days: days, assignedTo: st.assignedTo });
+        });
+    });
+    stuckList.sort(function(a, b) { return b.days - a.days; });
+
+    document.getElementById('bf-stuck-count').textContent = stuckList.length + (stuckList.length === 1 ? ' tender' : ' tenders');
+    document.getElementById('bf-stuck').innerHTML = stuckList.length
+        ? stuckList.map(function(x) {
+            var cls = x.days >= 28 ? 'stuck-crit' : x.days >= 21 ? 'stuck-warn' : 'stuck-ok';
+            var dot = x.info.color || 'var(--primary)';
+            var sub = esc(x.info.label) + (x.assignedTo ? ' · ' + esc(x.assignedTo) : '');
+            return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
+                '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
+                '<div class="bf-row-left">' +
+                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-sub">' + sub + '</div>' +
+                '</div>' +
+                '<span class="bf-badge ' + cls + '">' + x.days + 'd</span>' +
+                '</div>';
+        }).join('')
+        : '<div class="bf-empty">✅ Nothing stuck &gt;' + OVERDUE_DAYS + ' days</div>';
+
+    // ── 3. Upcoming Key Dates (next 7 days) ─────────────
+    var DATE_FIELDS = [
+        { key: 'saleEndDate',    label: 'Sale End'     },
+        { key: 'preBidDate',     label: 'Pre-Bid'      },
+        { key: 'bidOpeningDate', label: 'Bid Opening'  },
+        { key: 'raDate',         label: 'RA'           },
+    ];
+    var upcoming = [];
+    tenders.forEach(function(t) {
+        if (t.status === 'Awarded' || t.status === 'Cancelled') return;
+        DATE_FIELDS.forEach(function(f) {
+            var d = t[f.key];
+            if (!d || d < todayStr || d > in7Str) return;
+            var dl = Math.round((new Date(d) - new Date(todayStr)) / 86400000);
+            upcoming.push({ t: t, label: f.label, date: d, dl: dl });
+        });
+    });
+    upcoming.sort(function(a, b) { return a.dl - b.dl; });
+
+    document.getElementById('bf-dates-count').textContent = upcoming.length + (upcoming.length === 1 ? ' event' : ' events');
+    document.getElementById('bf-dates').innerHTML = upcoming.length
+        ? upcoming.map(function(x) {
+            var cls  = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
+            var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+            return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
+                '<div class="bf-row-left">' +
+                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
+                '</div>' +
+                '<span class="bf-badge ' + cls + '">' + when + '</span>' +
+                '</div>';
+        }).join('')
+        : '<div class="bf-empty">✅ No dates in next 7 days</div>';
 }
 
 function toggleStats() {
