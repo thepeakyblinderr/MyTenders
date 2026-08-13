@@ -5,680 +5,520 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyTenders</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+/* ── ROOT ── */
+:root {
+    --bg:          #f2f2f7;
+    --card:        #ffffff;
+    --sidebar:     #ffffff;
+    --text:        #1c1c1e;
+    --text-sub:    #6e6e73;
+    --text-dim:    #aeaeb2;
+    --sep:         rgba(0,0,0,0.08);
+    --primary:     #007aff;
+    --primary-dim: rgba(0,122,255,0.10);
+    --green:       #34c759;
+    --orange:      #ff9500;
+    --red:         #ff3b30;
+    --shadow-sm:   0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05);
+    --shadow-md:   0 6px 20px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
+    --radius:      12px;
+    --radius-sm:   8px;
+    --sidebar-w:   248px;
+}
 
-        :root {
-            --primary: #1a73e8;
-            --primary-hover: #1557b0;
-            --bg: #f1f3f4;
-            --text: #202124;
-            --text-sub: #5f6368;
-            --border: #dadce0;
-            --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
-        }
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height:100vh;
+    font-size:14px; -webkit-font-smoothing:antialiased;
+}
+input, select, textarea {
+    border: 1px solid var(--sep); border-radius: var(--radius-sm);
+    font-size:13px; font-family:inherit; color:var(--text);
+    background:white; outline:none; transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim);
+}
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-        }
+/* ── SETUP ── */
+#setup-screen {
+    min-height:100vh; display:flex; align-items:center;
+    justify-content:center; background:var(--bg);
+}
+.setup-card {
+    background:var(--card); border-radius:20px; padding:48px 40px;
+    box-shadow:var(--shadow-md); width:460px; max-width:95vw;
+}
+.setup-card .icon { font-size:44px; margin-bottom:10px; }
+.setup-card h1 { font-size:24px; color:var(--primary); margin-bottom:6px; }
+.setup-card .sub { color:var(--text-sub); font-size:14px; margin-bottom:28px; line-height:1.5; }
+.setup-steps {
+    background:var(--bg); border-radius:var(--radius-sm);
+    padding:16px 18px; margin-bottom:24px; font-size:13px; color:var(--text-sub); line-height:1.9;
+}
+.setup-steps strong { color:var(--text); }
+.setup-input-wrap { display:flex; flex-direction:column; gap:8px; }
+.setup-input-wrap label { font-size:13px; font-weight:600; color:var(--text-sub); }
+.setup-input-wrap input { padding:11px 13px; font-family:monospace; }
+.setup-input-wrap input::placeholder { font-family:inherit; color:#bbb; }
+.setup-hint { font-size:12px; color:var(--text-sub); margin-top:4px; }
 
-        /* ── SETUP SCREEN ── */
-        #setup-screen {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #e8f0fe 0%, #f1f3f4 100%);
-        }
+/* ── APP SHELL ── */
+.app-shell { display:flex; min-height:100vh; }
 
-        .setup-card {
-            background: white;
-            border-radius: 16px;
-            padding: 48px 40px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-            width: 460px;
-            max-width: 95vw;
-        }
+/* ── SIDEBAR ── */
+.sidebar {
+    width: var(--sidebar-w); background:var(--sidebar);
+    border-right: 1px solid var(--sep);
+    position:fixed; top:0; left:0; bottom:0;
+    overflow-y:auto; z-index:50;
+    display:flex; flex-direction:column;
+}
+.sb-brand {
+    padding:18px 16px 14px; border-bottom:1px solid var(--sep);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.sb-brand h1 { font-size:16px; font-weight:700; color:var(--text); }
+#sync-status { font-size:11px; color:var(--text-dim); }
 
-        .setup-card .icon { font-size: 44px; margin-bottom: 10px; }
-        .setup-card h1 { font-size: 24px; color: var(--primary); margin-bottom: 6px; }
-        .setup-card .sub { color: var(--text-sub); font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
+.sb-sec { padding:14px 14px 10px; }
+.sb-sec-title {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.6px; color:var(--text-dim); margin-bottom:10px;
+}
+.sb-sep { height:1px; background:var(--sep); flex-shrink:0; }
 
-        .setup-steps {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 16px 18px;
-            margin-bottom: 24px;
-            font-size: 13px;
-            color: var(--text-sub);
-            line-height: 1.9;
-        }
+/* Stats */
+.sb-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.sb-stat {
+    background:var(--bg); border-radius:var(--radius-sm); padding:10px 11px;
+}
+.sb-stat.wide { grid-column:1/-1; }
+.sb-stat.clickable { cursor:pointer; transition:background .15s; }
+.sb-stat.clickable:hover { background:var(--primary-dim); }
+.sb-stat-num { display:block; font-size:24px; font-weight:700; line-height:1.1; }
+.sb-stat-lbl { display:block; font-size:11px; color:var(--text-sub); margin-top:2px; }
+.sb-stat-sub { display:block; font-size:11px; font-weight:600; color:var(--green); margin-top:1px; }
+.c-num-blue   { color:#007aff; }
+.c-num-green  { color:#1a7a35; }
+.c-num-red    { color:#ff3b30; }
+.sb-mini-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.sb-mini {
+    background:var(--bg); border-radius:7px; padding:7px 9px;
+}
+.sb-mini-num { font-size:16px; font-weight:700; display:block; color:var(--text); }
+.sb-mini-lbl { font-size:10px; color:var(--text-sub); display:block; }
 
-        .setup-steps strong { color: var(--text); }
+/* Filters */
+.sb-filters { padding:4px 14px 10px; }
+.sb-filter { margin-bottom:9px; }
+.sb-filter label {
+    display:block; font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.5px; color:var(--text-dim); margin-bottom:4px; padding-left:1px;
+}
+.sb-filter select {
+    width:100%; padding:7px 28px 7px 10px; border:1px solid var(--sep);
+    border-radius:var(--radius-sm); font-size:12.5px; background:var(--bg); color:var(--text);
+    -webkit-appearance:none; appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23aeaeb2' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 9px center;
+}
+.sb-filter select:focus { border-color:var(--primary); }
+.sb-clear {
+    width:100%; padding:7px; border:1px solid var(--sep); border-radius:var(--radius-sm);
+    background:transparent; color:var(--text-sub); font-size:12px; cursor:pointer;
+    font-family:inherit; transition:all .15s; margin-top:2px;
+}
+.sb-clear:hover { border-color:var(--red); color:var(--red); }
 
-        .setup-input-wrap { display: flex; flex-direction: column; gap: 8px; }
-        .setup-input-wrap label { font-size: 13px; font-weight: 600; color: var(--text-sub); }
-        .setup-input-wrap input {
-            padding: 11px 13px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: monospace;
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.15s;
-        }
-        .setup-input-wrap input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,115,232,0.15); }
-        .setup-input-wrap input::placeholder { font-family: inherit; color: #bbb; }
+/* Sidebar actions */
+.sb-actions {
+    padding:14px; border-top:1px solid var(--sep); margin-top:auto;
+    display:flex; flex-direction:column; gap:5px; flex-shrink:0;
+}
+.sb-btn-primary {
+    width:100%; padding:10px; background:var(--primary); color:white; border:none;
+    border-radius:var(--radius-sm); font-size:14px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:opacity .15s;
+}
+.sb-btn-primary:hover { opacity:.85; }
+.sb-btn-ghost {
+    width:100%; padding:8px; background:transparent; color:var(--text-sub);
+    border:1px solid var(--sep); border-radius:var(--radius-sm); font-size:12.5px;
+    cursor:pointer; font-family:inherit; transition:all .15s; text-align:center; display:block;
+    text-decoration:none; line-height:1.4;
+}
+.sb-btn-ghost:hover { background:var(--bg); color:var(--text); }
 
-        .setup-hint { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+/* ── MAIN CONTENT ── */
+.main-content { margin-left:var(--sidebar-w); flex:1; padding:22px 28px; min-height:100vh; }
+.main-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.search-wrap { flex:1; position:relative; }
+.search-wrap svg {
+    position:absolute; left:12px; top:50%;
+    transform:translateY(-50%); color:var(--text-dim); pointer-events:none;
+}
+.search-wrap input {
+    width:100%; padding:10px 14px 10px 38px;
+    background:var(--card); border:1px solid var(--sep);
+    border-radius:20px; font-size:14px; box-shadow:var(--shadow-sm);
+}
+.search-wrap input::placeholder { color:var(--text-dim); }
+.results-count { font-size:12px; color:var(--text-dim); white-space:nowrap; }
 
-        /* ── HEADER ── */
-        header {
-            background: white;
-            border-bottom: 1px solid var(--border);
-            height: 56px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 22px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow);
-        }
+/* ── KEY DATES BAR ── */
+#key-dates-bar {
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-sm);
+    border-left:4px solid var(--orange); padding:12px 16px;
+    display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:16px;
+}
+.kd-bar-title { font-size:12px; font-weight:700; color:#7a5800; white-space:nowrap; padding-top:2px; flex-shrink:0; }
+.kd-bar-events { display:flex; flex-wrap:wrap; gap:7px; flex:1; }
+.kd-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    border-radius:20px; padding:4px 12px 4px 8px;
+    font-size:12px; font-weight:500; cursor:pointer;
+    border:1px solid transparent; transition:opacity .15s;
+}
+.kd-pill:hover { opacity:.8; }
+.kd-pill .kd-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.kd-pill .kd-type { font-weight:700; font-size:11px; }
+.kd-pill.kd-today { background:rgba(255,59,48,.10); border-color:rgba(255,59,48,.3); color:#c5221f; }
+.kd-pill.kd-soon  { background:rgba(255,149,0,.10); border-color:rgba(255,149,0,.3); color:#a05e00; }
+.kd-pill.kd-week  { background:var(--primary-dim); border-color:rgba(0,122,255,.2); color:#007aff; }
+.kd-pill.kd-today .kd-dot { background:var(--red); }
+.kd-pill.kd-soon  .kd-dot { background:var(--orange); }
+.kd-pill.kd-week  .kd-dot { background:var(--primary); }
+.kd-bar-close {
+    background:none; border:none; cursor:pointer; font-size:18px;
+    color:var(--text-dim); padding:0 4px; flex-shrink:0; line-height:1;
+}
+.kd-bar-close:hover { color:var(--text-sub); }
 
-        header h1 { font-size: 18px; font-weight: 700; color: var(--primary); }
-        .header-right { display: flex; align-items: center; gap: 10px; }
+/* ── TENDER CARDS ── */
+.tender-card {
+    background:var(--card); border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); margin-bottom:10px; overflow:hidden;
+    transition:box-shadow .18s; border:1px solid var(--sep);
+}
+.tender-card:hover { box-shadow:var(--shadow-md); border-color:rgba(0,0,0,.09); }
+.card-header { padding:14px 16px 12px; cursor:pointer; user-select:none; }
+.card-top-row {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:12px; margin-bottom:2px;
+}
+.card-title-wrap { flex:1; min-width:0; }
+.card-title { font-size:14.5px; font-weight:600; color:var(--text); line-height:1.35; }
+.card-refs { font-size:11px; color:var(--text-dim); margin-top:2px; }
+.card-meta { font-size:12px; color:var(--text-sub); margin-top:3px; margin-bottom:10px; }
+.card-right { display:flex; align-items:center; gap:8px; flex-shrink:0; padding-top:2px; }
+.card-stages-row { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
+.card-dates-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 
-        /* ── MAIN ── */
-        main { max-width: 1480px; margin: 0 auto; padding: 22px 18px; }
+/* Card detail panel */
+.card-detail {
+    border-top:1px solid var(--sep); padding:14px 16px;
+    background:#fafafc; display:none;
+}
+.card-detail.open { display:block; }
+.card-detail-grid {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px 20px;
+}
+.cd-lbl {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.4px; color:var(--text-dim); margin-bottom:3px;
+}
+.cd-val { font-size:13px; color:var(--text); line-height:1.4; }
+.cd-span { grid-column:1/-1; }
+.card-footer {
+    border-top:1px solid var(--sep); padding:9px 16px;
+    display:flex; gap:7px; justify-content:flex-end; background:var(--bg);
+}
+.card-expand-btn {
+    background:none; border:1px solid var(--sep); border-radius:6px;
+    cursor:pointer; font-size:11px; color:var(--text-dim); padding:2px 8px; transition:all .15s;
+}
+.card-expand-btn:hover { border-color:var(--primary); color:var(--primary); }
 
-        /* ── DASHBOARD ── */
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 13px;
-            margin-bottom: 10px;
-        }
-        .dashboard2 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 13px;
-            margin-bottom: 20px;
-        }
+/* ── BADGES / TAGS / MISC ── */
+.badge {
+    display:inline-block; padding:3px 9px; border-radius:20px;
+    font-size:11px; font-weight:600; white-space:nowrap;
+}
+.b-progress  { background:var(--primary-dim);        color:#007aff; }
+.b-awarded   { background:rgba(52,199,89,.12);        color:#1a7a35; }
+.b-hold      { background:rgba(255,149,0,.12);        color:#a05e00; }
+.b-cancelled { background:rgba(255,59,48,.10);        color:#c5221f; }
+.tag {
+    display:inline-block; font-size:10px; font-weight:700;
+    border-radius:4px; padding:1px 5px; margin-left:5px; vertical-align:middle;
+}
+.tag-shutdown { background:rgba(255,59,48,.10);  color:#c5221f; }
+.tag-af       { background:var(--primary-dim);   color:#005ecb; }
+.tag-split    { background:rgba(175,82,222,.12); color:#7b1fa2; }
+.tag-critical { background:var(--red); color:#fff; font-weight:900; }
+.lead-pill {
+    display:inline-block; padding:2px 7px; border-radius:20px;
+    font-size:11px; font-weight:700; margin-left:4px;
+}
+.lead-ok     { background:rgba(52,199,89,.12);  color:#1a7a35; }
+.lead-warn   { background:rgba(255,149,0,.12);  color:#a05e00; }
+.lead-alert  { background:rgba(255,59,48,.10);  color:#c5221f; }
+.lead-frozen { background:var(--bg); color:var(--text-sub); }
+.fy-chip {
+    font-size:11px; background:var(--bg); color:var(--text-sub);
+    padding:2px 7px; border-radius:4px; font-weight:500; white-space:nowrap;
+}
+.fin-row { font-size:12px; color:var(--text-sub); line-height:1.6; }
+.fin-row span { color:var(--text); font-weight:500; }
+.fin-landed { font-size:13px; font-weight:700; color:#1a7a35; }
 
-        .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 16px 18px;
-            box-shadow: var(--shadow);
-            border-top: 3px solid transparent;
-            transition: box-shadow 0.2s;
-        }
-        .stat-card:hover { box-shadow: var(--shadow-md); }
+/* Stage chips */
+.stage-chips { display:flex; flex-wrap:wrap; gap:4px; }
+.stage-chip {
+    display:inline-block; font-size:10px; font-weight:600;
+    padding:2px 8px; border-radius:10px; color:#fff;
+    white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis;
+}
+.stage-add-btn {
+    font-size:14px; line-height:1; padding:1px 6px;
+    border:1px dashed var(--sep); border-radius:10px;
+    background:none; cursor:pointer; color:var(--text-dim); transition:all .15s;
+}
+.stage-add-btn:hover { border-color:var(--primary); color:var(--primary); }
+.stage-chip-overdue { outline:2px solid var(--red); outline-offset:1px; }
 
-        .stat-card.s-total     { border-color: #9e9e9e; }
-        .stat-card.s-progress  { border-color: #1a73e8; }
-        .stat-card.s-awarded   { border-color: #34a853; }
-        .stat-card.s-hold      { border-color: #f9ab00; }
-        .stat-card.s-cancelled { border-color: #ea4335; }
-        .stat-card.s-arc       { border-color: #8e24aa; }
-        .stat-card.s-onetime   { border-color: #00897b; }
-        .stat-card.s-shutdown  { border-color: #e53935; }
-        .stat-card.s-af        { border-color: #1e88e5; }
-        .stat-card.s-critical  { border-color: #b71c1c; }
+/* Stage popover */
+.stage-popover {
+    position:fixed; z-index:9999;
+    background:#fff; border:1px solid var(--sep);
+    border-radius:12px; box-shadow:var(--shadow-md);
+    width:320px; max-height:420px;
+    display:flex; flex-direction:column; overflow:hidden;
+}
+.stage-popover-search {
+    padding:9px 10px; border-bottom:1px solid var(--sep);
+    background:#f8f9fa; flex-shrink:0;
+}
+.stage-popover-search input {
+    width:100%; padding:6px 10px; border-radius:6px;
+    border:1px solid var(--sep); font-size:13px; background:#fff; color:var(--text);
+}
+.stage-popover-list { overflow-y:auto; flex:1; }
+.stage-popover-entry { border-bottom:1px solid #f1f3f4; }
+.stage-popover-entry:last-child { border-bottom:none; }
+.stage-popover-entry:hover { background:var(--bg); }
+.stage-popover-item {
+    display:flex; align-items:center; gap:9px;
+    padding:8px 12px 4px; cursor:pointer; font-size:13px; background:transparent;
+}
+.stage-popover-item input[type=checkbox] { width:15px; height:15px; flex-shrink:0; cursor:pointer; }
+.stage-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.stage-pop-label { flex:1; min-width:0; }
+.stage-days {
+    font-size:10px; font-weight:700; padding:1px 5px;
+    border-radius:8px; background:var(--primary-dim); color:var(--primary); white-space:nowrap;
+}
+.stage-days.overdue { background:rgba(255,59,48,.1); color:var(--red); }
+.stage-assignee-row { display:flex; align-items:center; gap:6px; padding:2px 12px 8px 36px; }
+.stage-assign-input {
+    font-size:12px; border:1px solid #e0e0e0; border-radius:5px;
+    padding:4px 8px; flex:1; background:#fff; color:var(--text); outline:none;
+}
+.stage-assign-input:focus { border-color:var(--primary); }
 
-        .stat-card .num { font-size: 36px; font-weight: 700; line-height: 1.1; }
-        .stat-card.s-total     .num { color: #757575; }
-        .stat-card.s-progress  .num { color: #1a73e8; }
-        .stat-card.s-awarded   .num { color: #34a853; }
-        .stat-card.s-hold      .num { color: #f9ab00; }
-        .stat-card.s-cancelled .num { color: #ea4335; }
-        .stat-card.s-arc       .num { color: #8e24aa; }
-        .stat-card.s-onetime   .num { color: #00897b; }
-        .stat-card.s-shutdown  .num { color: #e53935; }
-        .stat-card.s-af        .num { color: #1e88e5; }
-        .stat-card.s-critical  .num { color: #b71c1c; }
+/* ── BUTTONS ── */
+.btn {
+    padding:8px 17px; border-radius:var(--radius-sm); font-size:13.5px;
+    font-weight:500; cursor:pointer; border:none; transition:all .15s;
+    white-space:nowrap; font-family:inherit;
+}
+.btn-primary { background:var(--primary); color:white; }
+.btn-primary:hover { opacity:.85; }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.btn-outline { background:white; color:var(--primary); border:1px solid var(--primary); }
+.btn-outline:hover { background:var(--primary-dim); }
+.btn-danger { background:var(--red); color:white; }
+.btn-danger:hover { opacity:.85; }
+.btn-sm {
+    padding:5px 12px; border-radius:7px; font-size:12px;
+    font-weight:500; border:none; cursor:pointer; transition:all .15s; font-family:inherit;
+}
+.btn-edit { background:var(--primary-dim); color:var(--primary); }
+.btn-edit:hover { background:rgba(0,122,255,.18); }
+.btn-del  { background:rgba(255,59,48,.10); color:var(--red); }
+.btn-del:hover  { background:rgba(255,59,48,.18); }
 
-        .stat-card .lbl {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-sub);
-            margin-top: 4px;
-        }
-        .stat-card .sub-cost {
-            font-size: 12px;
-            font-weight: 600;
-            color: #34a853;
-            margin-top: 3px;
-        }
+/* Status / empty */
+.status-bar { text-align:center; padding:60px 24px; color:var(--text-sub); }
+.empty-state { text-align:center; padding:80px 24px; color:var(--text-sub); }
+.empty-state .icon { font-size:48px; margin-bottom:14px; }
+.empty-state h3 { color:var(--text); margin-bottom:6px; font-size:18px; }
 
-        /* ── TOOLBAR ── */
-        .toolbar {
-            display: flex;
-            gap: 9px;
-            margin-bottom: 13px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
+/* ── MODAL ── */
+.backdrop {
+    position:fixed; inset:0; background:rgba(0,0,0,.30); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+    backdrop-filter:blur(2px);
+}
+.modal {
+    background:white; border-radius:16px; width:100%; max-width:820px; max-height:92vh;
+    overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.2); display:flex; flex-direction:column;
+}
+.modal-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 26px 0; flex-shrink:0;
+}
+.modal-head h2 { font-size:18px; }
+.modal-close {
+    background:none; border:none; font-size:26px; line-height:1;
+    cursor:pointer; color:var(--text-sub); padding:2px 6px; border-radius:4px;
+}
+.modal-close:hover { background:var(--bg); }
+.modal-body { padding:18px 26px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.full { grid-column:1/-1; }
+.field { display:flex; flex-direction:column; gap:4px; }
+.field label {
+    font-size:11px; font-weight:700; color:var(--text-sub);
+    text-transform:uppercase; letter-spacing:.4px;
+}
+.field input, .field select, .field textarea { padding:9px 11px; }
+.field textarea { resize:vertical; min-height:68px; }
+.lead-display {
+    padding:9px 11px; background:var(--bg); border:1px solid var(--sep);
+    border-radius:var(--radius-sm); font-size:14px; font-weight:600; color:var(--primary);
+}
+.sec-label {
+    font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.5px; color:var(--text-sub);
+    padding-bottom:8px; border-bottom:1px solid var(--sep); grid-column:1/-1; margin-top:4px;
+}
+.modal-foot {
+    padding:14px 26px; border-top:1px solid var(--sep);
+    display:flex; gap:10px; justify-content:flex-end; flex-shrink:0;
+}
 
-        .search-wrap { flex: 1; min-width: 200px; position: relative; }
-        .search-wrap svg {
-            position: absolute; left: 10px; top: 50%;
-            transform: translateY(-50%); color: var(--text-sub); pointer-events: none;
-        }
-        .search-wrap input { width: 100%; padding: 8px 12px 8px 33px; }
+/* ── WO LIST ── */
+.wo-list-wrap { grid-column:1/-1; }
+.wo-list-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.wo-list-header span {
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-sub);
+}
+.btn-add-wo {
+    font-size:12px; padding:4px 12px; border-radius:6px;
+    border:1px solid var(--primary); color:var(--primary); background:#fff; cursor:pointer; font-weight:600;
+}
+.btn-add-wo:hover { background:var(--primary); color:#fff; }
+.wo-row {
+    display:grid; grid-template-columns:1fr 130px 1fr 120px 32px;
+    gap:8px; margin-bottom:8px; align-items:end;
+}
+.wo-row .field label { font-size:10px; }
+.wo-row .btn-rm-wo {
+    height:36px; width:32px; border:1px solid #f66; color:#f66;
+    background:#fff; border-radius:6px; cursor:pointer; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+}
+.wo-row .btn-rm-wo:hover { background:#fff0f0; }
+.wo-total {
+    font-size:12px; font-weight:600; color:var(--primary);
+    text-align:right; margin-top:4px; padding:6px 10px;
+    background:var(--primary-dim); border-radius:6px;
+}
 
-        input, select, textarea {
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            font-size: 13.5px;
-            font-family: inherit;
-            color: var(--text);
-            background: white;
-            outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
-        }
+/* ── CONFIRM ── */
+.confirm-modal {
+    background:white; border-radius:16px; padding:32px; max-width:380px; width:100%;
+    text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.2);
+}
+.confirm-modal .icon { font-size:42px; margin-bottom:12px; }
+.confirm-modal h2 { margin-bottom:8px; }
+.confirm-modal p { color:var(--text-sub); font-size:14px; margin-bottom:22px; }
+.confirm-modal .actions { display:flex; gap:10px; justify-content:center; }
 
-        select.filter { padding: 8px 10px; cursor: pointer; }
+/* ── TOAST ── */
+#toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:rgba(28,28,30,.9); color:white; padding:10px 20px;
+    border-radius:20px; font-size:14px; z-index:999;
+    opacity:0; transition:opacity .25s; pointer-events:none; backdrop-filter:blur(8px);
+}
+#toast.show { opacity:1; }
 
-        /* ── STAGE CHIPS ── */
-        .stage-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-        .stage-chip {
-            display: inline-block; font-size: 10px; font-weight: 600;
-            padding: 2px 7px; border-radius: 10px; color: #fff;
-            white-space: nowrap; max-width: 180px; overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .stage-add-btn {
-            font-size: 16px; line-height: 1; padding: 0 5px;
-            border: 1px dashed var(--border); border-radius: 10px;
-            background: none; cursor: pointer; color: var(--text-sub);
-        }
-        .stage-add-btn:hover { border-color: var(--primary); color: var(--primary); }
+/* Remarks popover */
+#remarks-popover {
+    position:fixed; z-index:400; background:white;
+    border:1px solid var(--sep); border-radius:12px; padding:14px 16px;
+    box-shadow:var(--shadow-md); max-width:320px; width:max-content;
+    font-size:13px; color:var(--text); line-height:1.6;
+    white-space:pre-wrap; word-break:break-word; display:none;
+}
+#remarks-popover.show { display:block; }
 
-        /* ── STAGE PICKER POPOVER ── */
-        .stage-popover {
-            position: fixed; z-index: 9999;
-            background: #fff; border: 1px solid var(--border);
-            border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.22);
-            width: 320px; max-height: 420px;
-            display: flex; flex-direction: column;
-            overflow: hidden;
-        }
-        .stage-popover-search {
-            padding: 9px 10px; border-bottom: 1px solid var(--border);
-            background: #f8f9fa; flex-shrink: 0;
-        }
-        .stage-popover-search input {
-            width: 100%; padding: 6px 10px; border-radius: 6px;
-            border: 1px solid var(--border); font-size: 13px;
-            background: #fff; color: var(--text);
-        }
-        .stage-popover-list {
-            overflow-y: auto; flex: 1;
-        }
-        .stage-popover-entry { border-bottom: 1px solid #f1f3f4; }
-        .stage-popover-entry:last-child { border-bottom: none; }
-        .stage-popover-entry:hover { background: #f8f9fa; }
-        .stage-popover-item {
-            display: flex; align-items: center; gap: 9px;
-            padding: 8px 12px 4px; cursor: pointer; font-size: 13px;
-            background: transparent;
-        }
-        .stage-popover-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
-        .stage-dot {
-            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-        }
+/* ── DEDUP ── */
+.dup-group { border:1px solid var(--sep); border-radius:var(--radius-sm); margin-bottom:14px; overflow:hidden; }
+.dup-group-head {
+    background:rgba(255,149,0,.10); padding:8px 14px; font-size:12px;
+    font-weight:700; color:#7a5800; border-bottom:1px solid rgba(255,149,0,.2);
+    display:flex; justify-content:space-between; align-items:center;
+}
+.dup-entry {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 14px; border-bottom:1px solid #f1f3f4; font-size:13px;
+}
+.dup-entry:last-child { border-bottom:none; }
+.dup-entry.keep-row { background:rgba(52,199,89,.06); }
+.dup-entry input[type=checkbox] { width:16px; height:16px; flex-shrink:0; cursor:pointer; }
+.dup-keep-badge {
+    font-size:10px; font-weight:700; background:rgba(52,199,89,.15);
+    color:#1a7a35; padding:2px 7px; border-radius:10px; white-space:nowrap;
+}
+.dup-del-badge {
+    font-size:10px; font-weight:700; background:rgba(255,59,48,.1);
+    color:#c5221f; padding:2px 7px; border-radius:10px; white-space:nowrap;
+}
+.dup-info { flex:1; min-width:0; }
+.dup-info .main { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dup-info .sub  { font-size:11px; color:var(--text-sub); margin-top:2px; }
 
-        /* ── BUTTONS ── */
-        .btn {
-            padding: 8px 17px;
-            border-radius: 7px;
-            font-size: 13.5px;
-            font-weight: 500;
-            cursor: pointer;
-            border: none;
-            transition: all 0.15s;
-            white-space: nowrap;
-        }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        .btn-primary:disabled { background: #9dc0f5; cursor: not-allowed; }
-        .btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
-        .btn-outline:hover { background: #e8f0fe; }
-        .btn-danger { background: #ea4335; color: white; }
-        .btn-danger:hover { background: #c62828; }
+/* ── IMPORT ── */
+.import-modal { max-width:900px; }
+.mapping-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:4px; }
+.mapping-table th {
+    padding:8px 10px; background:var(--bg); font-size:10px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.5px; color:var(--text-sub);
+    border-bottom:2px solid var(--sep); text-align:left;
+}
+.mapping-table td { padding:7px 10px; border-bottom:1px solid #f1f3f4; vertical-align:middle; }
+.mapping-table .sample-val {
+    color:var(--text-sub); font-size:12px;
+    max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mapping-select {
+    padding:5px 8px; border-radius:6px; font-size:12px;
+    width:100%; border:1px solid var(--sep); background:white; color:var(--text);
+}
+.preview-wrap {
+    overflow-x:auto; max-height:200px; overflow-y:auto;
+    border:1px solid var(--sep); border-radius:var(--radius-sm);
+}
+.preview-table { width:100%; border-collapse:collapse; font-size:12px; }
+.preview-table th {
+    padding:7px 10px; background:var(--bg); font-size:10px; font-weight:700;
+    text-transform:uppercase; color:var(--text-sub); border-bottom:1px solid var(--sep);
+    white-space:nowrap; position:sticky; top:0;
+}
+.preview-table td {
+    padding:6px 10px; border-bottom:1px solid #f1f3f4;
+    white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis;
+}
+.import-prog-bar { height:6px; background:var(--bg); border-radius:3px; overflow:hidden; margin-top:8px; }
+.import-prog-fill { height:100%; background:var(--primary); border-radius:3px; transition:width .2s; }
 
-        /* ── TABLE ── */
-        .table-wrap {
-            background: white;
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-        }
-
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead { background: #f8f9fa; }
-        thead tr { border-bottom: 2px solid var(--border); }
-        th {
-            padding: 9px 12px;
-            text-align: left;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-sub);
-            white-space: nowrap;
-        }
-        td {
-            padding: 9px 12px;
-            border-bottom: 1px solid #f1f3f4;
-            vertical-align: middle;
-        }
-        tr:last-child td { border-bottom: none; }
-        tbody tr:hover td { background: #fafbfc; }
-
-        /* stacked cell helpers */
-        .cell-main  { font-weight: 600; font-size: 13px; color: var(--text); line-height: 1.3; }
-        .cell-sub   { font-size: 11px; color: var(--text-sub); margin-top: 2px; line-height: 1.4; }
-        .cell-dim   { color: #c5cae9; }   /* "—" placeholder */
-
-        .work-name { font-weight: 600; }
-        .tag {
-            display: inline-block; font-size: 10px; font-weight: 700;
-            border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle;
-        }
-        .tag-shutdown { background: #fce8e6; color: #c5221f; }
-        .tag-af       { background: #e8f0fe; color: #1557b0; }
-        .tag-split    { background: #f3e8fd; color: #7b1fa2; }
-        .tag-critical { background: #b71c1c; color: #fff; font-weight: 900; letter-spacing: 0.3px; }
-
-        .badge {
-            display: inline-block; padding: 3px 9px; white-space: nowrap;
-            border-radius: 20px; font-size: 11px; font-weight: 600;
-        }
-        .b-progress  { background: #e8f0fe; color: #1557b0; }
-        .b-awarded   { background: #e6f4ea; color: #137333; }
-        .b-hold      { background: #fef7e0; color: #b45309; }
-        .b-cancelled { background: #fce8e6; color: #c5221f; }
-
-        .lead-pill {
-            display: inline-block; padding: 2px 7px; border-radius: 20px;
-            font-size: 11px; font-weight: 700; margin-top: 4px;
-        }
-        .lead-ok     { background: #e6f4ea; color: #137333; }
-        .lead-warn   { background: #fef7e0; color: #b45309; }
-        .lead-alert  { background: #fce8e6; color: #c5221f; }
-        .lead-frozen { background: #f1f3f4; color: var(--text-sub); }
-
-        .remarks-cell { max-width: 180px; font-size: 12px; color: var(--text-sub); }
-        .remarks-short {
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-            overflow: hidden; cursor: pointer; line-height: 1.5;
-        }
-        .remarks-short:hover { color: var(--primary); }
-
-        /* Remarks popover */
-        #remarks-popover {
-            position: fixed; z-index: 400;
-            background: white; border: 1px solid var(--border);
-            border-radius: 10px; padding: 14px 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.14);
-            max-width: 320px; width: max-content;
-            font-size: 13px; color: var(--text); line-height: 1.6;
-            white-space: pre-wrap; word-break: break-word;
-            display: none;
-        }
-        #remarks-popover.show { display: block; }
-
-        .fy-chip {
-            font-size: 11px; background: #f1f3f4; color: var(--text-sub);
-            padding: 2px 7px; border-radius: 4px; font-weight: 500; white-space: nowrap;
-        }
-
-        .fin-row { font-size: 12px; color: var(--text-sub); line-height: 1.8; }
-        .fin-row span { color: var(--text); font-weight: 500; }
-        .fin-landed { font-size: 12px; font-weight: 700; color: #137333; margin-top: 1px; }
-
-        .tbl-actions { display: flex; gap: 5px; }
-        .btn-sm {
-            padding: 4px 10px; border-radius: 5px; font-size: 12px;
-            font-weight: 500; border: none; cursor: pointer; transition: background 0.15s;
-        }
-        .btn-edit { background: #e8f0fe; color: #1a73e8; }
-        .btn-edit:hover { background: #d2e3fc; }
-        .btn-del  { background: #fce8e6; color: #c5221f; }
-        .btn-del:hover  { background: #f5c6c2; }
-
-        .empty-state {
-            text-align: center; padding: 60px 24px; color: var(--text-sub);
-        }
-        .empty-state .icon { font-size: 44px; margin-bottom: 12px; }
-        .empty-state h3 { color: var(--text); margin-bottom: 6px; }
-
-        .status-bar {
-            text-align: center; padding: 32px; color: var(--text-sub);
-        }
-
-        /* ── MODAL ── */
-        .backdrop {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.35);
-            z-index: 200;
-            display: flex; align-items: center; justify-content: center;
-            padding: 16px;
-        }
-
-        .modal {
-            background: white; border-radius: 12px;
-            width: 100%; max-width: 820px; max-height: 92vh;
-            overflow-y: auto;
-            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
-            display: flex; flex-direction: column;
-        }
-
-        .modal-head {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 22px 26px 0; flex-shrink: 0;
-        }
-        .modal-head h2 { font-size: 18px; }
-        .modal-close {
-            background: none; border: none; font-size: 26px; line-height: 1;
-            cursor: pointer; color: var(--text-sub); padding: 2px 6px; border-radius: 4px;
-        }
-        .modal-close:hover { background: #f1f3f4; }
-
-        .modal-body { padding: 18px 26px; }
-
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .full { grid-column: 1 / -1; }
-
-        .field { display: flex; flex-direction: column; gap: 4px; }
-        .field label {
-            font-size: 11px; font-weight: 700; color: var(--text-sub);
-            text-transform: uppercase; letter-spacing: 0.4px;
-        }
-        .field input, .field select, .field textarea { padding: 9px 11px; }
-        .field textarea { resize: vertical; min-height: 68px; }
-
-        .lead-display {
-            padding: 9px 11px; background: #f8f9fa;
-            border: 1px solid var(--border); border-radius: 7px;
-            font-size: 14px; font-weight: 600; color: var(--primary);
-        }
-
-        .sec-label {
-            font-size: 11px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.5px; color: var(--text-sub);
-            padding-bottom: 8px; border-bottom: 1px solid var(--border);
-            grid-column: 1 / -1; margin-top: 4px;
-        }
-
-        /* ── WO LIST (split tenders) ── */
-        .wo-list-wrap { grid-column: 1 / -1; }
-        .wo-list-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 8px;
-        }
-        .wo-list-header span {
-            font-size: 11px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.4px; color: var(--text-sub);
-        }
-        .btn-add-wo {
-            font-size: 12px; padding: 4px 12px; border-radius: 6px;
-            border: 1px solid var(--primary); color: var(--primary);
-            background: #fff; cursor: pointer; font-weight: 600;
-        }
-        .btn-add-wo:hover { background: var(--primary); color: #fff; }
-        .wo-row {
-            display: grid; grid-template-columns: 1fr 130px 1fr 120px 32px;
-            gap: 8px; margin-bottom: 8px; align-items: end;
-        }
-        .wo-row .field label { font-size: 10px; }
-        .wo-row .btn-rm-wo {
-            height: 36px; width: 32px; border: 1px solid #f66; color: #f66;
-            background: #fff; border-radius: 6px; cursor: pointer; font-size: 16px;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .wo-row .btn-rm-wo:hover { background: #fff0f0; }
-        .wo-total {
-            font-size: 12px; font-weight: 600; color: var(--primary);
-            text-align: right; margin-top: 4px; padding: 6px 10px;
-            background: #f0f4ff; border-radius: 6px;
-        }
-
-        .modal-foot {
-            padding: 14px 26px; border-top: 1px solid var(--border);
-            display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
-        }
-
-        /* ── EXPANDED STATS ── */
-        .stats-expand-btn {
-            display: flex; align-items: center; gap: 6px;
-            background: white; border: 1px solid var(--border);
-            border-radius: 7px; padding: 6px 14px;
-            font-size: 12px; font-weight: 600; color: var(--text-sub);
-            cursor: pointer; margin-bottom: 14px; transition: all 0.15s;
-        }
-        .stats-expand-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .stats-expand-btn .arrow { transition: transform 0.2s; font-size: 10px; }
-        .stats-expand-btn.open .arrow { transform: rotate(180deg); }
-
-        #stats-extra { display: none; margin-bottom: 16px; }
-        #stats-extra.open { display: block; }
-
-        .dashboard3 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 13px;
-            margin-bottom: 13px;
-        }
-        .stat-card.s-gem      { border-color: #0288d1; }
-        .stat-card.s-etender  { border-color: #7b1fa2; }
-        .stat-card.s-physical { border-color: #558b2f; }
-        .stat-card.s-leadavg  { border-color: #f57c00; }
-        .stat-card.s-gem      .num { color: #0288d1; }
-        .stat-card.s-etender  .num { color: #7b1fa2; }
-        .stat-card.s-physical .num { color: #558b2f; }
-        .stat-card.s-leadavg  .num { color: #f57c00; }
-
-        .dept-table {
-            background: white; border-radius: 10px;
-            box-shadow: var(--shadow); overflow: hidden;
-        }
-        .dept-table-head {
-            padding: 10px 16px; font-size: 11px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            color: var(--text-sub); border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between;
-        }
-        .dept-table-row {
-            display: flex; align-items: center; padding: 8px 16px;
-            border-bottom: 1px solid #f1f3f4; font-size: 13px;
-        }
-        .dept-table-row:last-child { border-bottom: none; }
-        .dept-bar-wrap { flex: 1; margin: 0 12px; height: 6px; background: #f1f3f4; border-radius: 3px; overflow: hidden; }
-        .dept-bar { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
-        .dept-count { font-weight: 700; color: var(--primary); font-size: 13px; min-width: 24px; text-align: right; }
-
-        /* ── CONFIRM ── */
-        .confirm-modal {
-            background: white; border-radius: 12px; padding: 32px;
-            max-width: 380px; width: 100%; text-align: center;
-            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
-        }
-        .confirm-modal .icon { font-size: 42px; margin-bottom: 12px; }
-        .confirm-modal h2 { margin-bottom: 8px; }
-        .confirm-modal p { color: var(--text-sub); font-size: 14px; margin-bottom: 22px; }
-        .confirm-modal .actions { display: flex; gap: 10px; justify-content: center; }
-
-        /* ── TOAST ── */
-        #toast {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-            background: #323232; color: white; padding: 10px 20px;
-            border-radius: 8px; font-size: 14px; z-index: 999;
-            opacity: 0; transition: opacity 0.25s; pointer-events: none;
-        }
-        #toast.show { opacity: 1; }
-
-        /* ── DEDUP MODAL ── */
-        .dup-group {
-            border: 1px solid var(--border); border-radius: 8px;
-            margin-bottom: 14px; overflow: hidden;
-        }
-        .dup-group-head {
-            background: #fef7e0; padding: 8px 14px; font-size: 12px;
-            font-weight: 700; color: #7a5800; border-bottom: 1px solid #f9e0a0;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .dup-entry {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 14px; border-bottom: 1px solid #f1f3f4; font-size: 13px;
-        }
-        .dup-entry:last-child { border-bottom: none; }
-        .dup-entry.keep-row { background: #f0fdf4; }
-        .dup-entry input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
-        .dup-keep-badge {
-            font-size: 10px; font-weight: 700; background: #d1fae5;
-            color: #065f46; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
-        }
-        .dup-del-badge {
-            font-size: 10px; font-weight: 700; background: #fce8e6;
-            color: #c5221f; padding: 2px 7px; border-radius: 10px; white-space: nowrap;
-        }
-        .dup-info { flex: 1; min-width: 0; }
-        .dup-info .main { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dup-info .sub  { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
-
-        /* ── IMPORT MODAL ── */
-        .import-modal { max-width: 900px; }
-        .mapping-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
-        .mapping-table th {
-            padding: 8px 10px; background: #f8f9fa; font-size: 10px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-sub);
-            border-bottom: 2px solid var(--border); text-align: left;
-        }
-        .mapping-table td { padding: 7px 10px; border-bottom: 1px solid #f1f3f4; vertical-align: middle; }
-        .mapping-table .sample-val {
-            color: var(--text-sub); font-size: 12px;
-            max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .mapping-select {
-            padding: 5px 8px; border-radius: 6px; font-size: 12px;
-            width: 100%; border: 1px solid var(--border); background: white; color: var(--text);
-        }
-        .preview-wrap {
-            overflow-x: auto; max-height: 200px; overflow-y: auto;
-            border: 1px solid var(--border); border-radius: 8px;
-        }
-        .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .preview-table th {
-            padding: 7px 10px; background: #f8f9fa; font-size: 10px; font-weight: 700;
-            text-transform: uppercase; color: var(--text-sub); border-bottom: 1px solid var(--border);
-            white-space: nowrap; position: sticky; top: 0;
-        }
-        .preview-table td {
-            padding: 6px 10px; border-bottom: 1px solid #f1f3f4;
-            white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis;
-        }
-        .import-prog-bar { height: 6px; background: #f1f3f4; border-radius: 3px; overflow: hidden; margin-top: 8px; }
-        .import-prog-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.2s; }
-
-        /* ── KEY DATES ALERT BAR ── */
-        #key-dates-bar {
-            background: #fff; border-bottom: 3px solid #f9ab00;
-            padding: 10px 22px; display: flex; align-items: flex-start;
-            gap: 12px; flex-wrap: wrap;
-        }
-        .kd-bar-title {
-            font-size: 12px; font-weight: 700; color: #7a5800;
-            white-space: nowrap; padding-top: 3px; flex-shrink: 0;
-        }
-        .kd-bar-events { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
-        .kd-pill {
-            display: inline-flex; align-items: center; gap: 6px;
-            border-radius: 20px; padding: 4px 12px 4px 9px;
-            font-size: 12px; font-weight: 500; cursor: pointer;
-            border: 1px solid transparent; transition: opacity 0.15s;
-        }
-        .kd-pill:hover { opacity: 0.8; }
-        .kd-pill .kd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .kd-pill .kd-type { font-weight: 700; font-size: 11px; }
-        .kd-pill.kd-today  { background: #fce8e6; border-color: #ea4335; color: #c5221f; }
-        .kd-pill.kd-soon   { background: #fef7e0; border-color: #f9ab00; color: #7a5800; }
-        .kd-pill.kd-week   { background: #e8f0fe; border-color: #aecbfa; color: #1a73e8; }
-        .kd-pill.kd-today .kd-dot  { background: #ea4335; }
-        .kd-pill.kd-soon  .kd-dot  { background: #f9ab00; }
-        .kd-pill.kd-week  .kd-dot  { background: #1a73e8; }
-        .kd-bar-close {
-            background: none; border: none; cursor: pointer; font-size: 18px;
-            color: #9e9e9e; padding: 0 4px; flex-shrink: 0; line-height: 1;
-        }
-        .kd-bar-close:hover { color: #555; }
-
-        /* ── SLIM TABLE / DETAIL ROW ── */
-        .detail-row { display: none; background: #fafbfc; }
-        .detail-row.open { display: table-row; }
-        .detail-grid {
-            display: grid; grid-template-columns: repeat(4,1fr);
-            gap: 10px 24px; padding: 14px 16px 14px 44px;
-            border-top: 1px solid #f1f3f4;
-        }
-        .detail-item .d-lbl {
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.4px; color: var(--text-sub); margin-bottom: 2px;
-        }
-        .detail-item .d-val { font-size: 13px; color: var(--text); }
-        .detail-item.full-span { grid-column: 1 / -1; }
-        .btn-expand {
-            background: none; border: 1px solid var(--border); cursor: pointer;
-            font-size: 11px; color: var(--text-sub); padding: 2px 7px; border-radius: 5px;
-        }
-        .btn-expand:hover { border-color: var(--primary); color: var(--primary); }
-
-        /* ── STAGE PICKER ENHANCEMENTS ── */
-        .stage-popover-entry { border-bottom: 1px solid #f5f5f5; }
-        .stage-popover-entry:last-child { border-bottom: none; }
-        .stage-pop-label { flex: 1; min-width: 0; }
-        .stage-days {
-            font-size: 10px; font-weight: 700; padding: 1px 5px;
-            border-radius: 8px; background: #e8f0fe; color: var(--primary); white-space: nowrap;
-        }
-        .stage-days.overdue { background: #fce8e6; color: #c5221f; }
-        .stage-assignee-row {
-            display: flex; align-items: center; gap: 6px;
-            padding: 2px 12px 8px 36px; background: transparent;
-        }
-        .stage-assign-input {
-            font-size: 12px; border: 1px solid #e0e0e0; border-radius: 5px;
-            padding: 4px 8px; flex: 1; background: #fff; color: var(--text);
-            outline: none;
-        }
-        .stage-assign-input:focus { border-color: var(--primary); }
-        .stage-chip-overdue { outline: 2px solid #ea4335; outline-offset: 1px; }
-
-        /* ── UTILS ── */
-        .hidden { display: none !important; }
-
-        @media (max-width: 1100px) { .dashboard { grid-template-columns: repeat(3,1fr); } }
-        @media (max-width: 960px)  { .dashboard { grid-template-columns: repeat(3,1fr); } }
-        @media (max-width: 600px) {
-            .dashboard { grid-template-columns: repeat(2,1fr); }
-            .form-grid { grid-template-columns: 1fr; }
-            .full { grid-column: 1; }
-            .sec-label { grid-column: 1; }
-        }
+/* ── UTILS ── */
+.hidden { display:none !important; }
     </style>
 </head>
 <body>
@@ -713,180 +553,205 @@
 </div>
 
 <!-- ═══ MAIN APP ═══ -->
-<div id="app" class="hidden">
+<div id="app" class="app-shell hidden">
 
-    <header>
-        <h1>📋 MyTenders</h1>
-        <div class="header-right">
-            <span id="sync-status" style="font-size:12px;color:var(--text-sub);"></span>
-            <a href="TenderTrack.html" class="btn btn-outline" style="font-size:12px;padding:6px 13px;text-decoration:none;">📊 Pipeline</a>
-            <button class="btn btn-outline" style="font-size:12px;padding:6px 13px;" onclick="changeDB()">Change DB</button>
-            <button class="btn btn-primary" onclick="openAdd()">+ Add Tender</button>
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar">
+        <div class="sb-brand">
+            <h1>📋 MyTenders</h1>
+            <span id="sync-status"></span>
         </div>
-    </header>
 
-    <!-- ── KEY DATES ALERT BAR ── -->
-    <div id="key-dates-bar" style="display:none;"></div>
-
-    <main>
-        <!-- Dashboard Row 1 -->
-        <div class="dashboard">
-            <div class="stat-card s-total">
-                <div class="num" id="c-total">0</div>
-                <div class="lbl">Total</div>
-            </div>
-            <div class="stat-card s-progress">
-                <div class="num" id="c-progress">0</div>
-                <div class="lbl">In Progress</div>
-            </div>
-            <div class="stat-card s-awarded">
-                <div class="num" id="c-awarded">0</div>
-                <div class="lbl">Awarded</div>
-                <div class="sub-cost" id="c-awarded-cost"></div>
-            </div>
-            <div class="stat-card s-cancelled">
-                <div class="num" id="c-cancelled">0</div>
-                <div class="lbl">Cancelled</div>
-            </div>
-            <div class="stat-card s-critical" style="cursor:pointer;" onclick="filterCritical()" title="Click to filter critical tenders">
-                <div class="num" id="c-critical">0</div>
-                <div class="lbl">🚨 Critical</div>
-            </div>
-        </div>
-        <!-- Dashboard Row 2 -->
-        <div class="dashboard2">
-            <div class="stat-card s-arc">
-                <div class="num" id="c-arc">0</div>
-                <div class="lbl">ARC</div>
-                <div class="sub-cost" id="c-arc-cost"></div>
-            </div>
-            <div class="stat-card s-onetime">
-                <div class="num" id="c-onetime">0</div>
-                <div class="lbl">One-Time</div>
-                <div class="sub-cost" id="c-onetime-cost"></div>
-            </div>
-            <div class="stat-card s-shutdown">
-                <div class="num" id="c-shutdown">0</div>
-                <div class="lbl">Shutdown Jobs</div>
-                <div class="sub-cost" id="c-shutdown-cost"></div>
-            </div>
-            <div class="stat-card s-af">
-                <div class="num" id="c-af">0</div>
-                <div class="lbl">AF Budget</div>
-                <div class="sub-cost" id="c-af-cost"></div>
+        <!-- Overview stats -->
+        <div class="sb-sec">
+            <div class="sb-sec-title">Overview</div>
+            <div class="sb-stats-grid">
+                <div class="sb-stat">
+                    <span class="sb-stat-num c-num-blue" id="c-total">0</span>
+                    <span class="sb-stat-lbl">Total</span>
+                </div>
+                <div class="sb-stat">
+                    <span class="sb-stat-num" id="c-progress">0</span>
+                    <span class="sb-stat-lbl">In Progress</span>
+                </div>
+                <div class="sb-stat">
+                    <span class="sb-stat-num c-num-green" id="c-awarded">0</span>
+                    <span class="sb-stat-lbl">Awarded</span>
+                    <span class="sb-stat-sub" id="c-awarded-cost"></span>
+                </div>
+                <div class="sb-stat">
+                    <span class="sb-stat-num c-num-red" id="c-cancelled">0</span>
+                    <span class="sb-stat-lbl">Cancelled</span>
+                </div>
+                <div class="sb-stat wide clickable" onclick="filterCritical()" title="Filter critical">
+                    <span class="sb-stat-num c-num-red" id="c-critical">0</span>
+                    <span class="sb-stat-lbl">🚨 Critical</span>
+                </div>
             </div>
         </div>
 
-        <!-- Expand button -->
-        <button class="stats-expand-btn" id="stats-toggle-btn" onclick="toggleStats()">
-            <span class="arrow">▼</span> More Stats
-        </button>
+        <div class="sb-sep"></div>
 
-        <!-- Expandable stats section -->
-        <div id="stats-extra">
-            <!-- Row 3: Mode counts + Avg Lead Days -->
-            <div class="dashboard3">
-                <div class="stat-card s-gem">
-                    <div class="num" id="c-gem">0</div>
-                    <div class="lbl">GEM</div>
+        <!-- Secondary stats -->
+        <div class="sb-sec">
+            <div class="sb-sec-title">By Type</div>
+            <div class="sb-mini-grid">
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-arc">0</span>
+                    <span class="sb-mini-lbl">ARC</span>
+                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-arc-cost"></span>
                 </div>
-                <div class="stat-card s-etender">
-                    <div class="num" id="c-etender">0</div>
-                    <div class="lbl">E-Tender</div>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-onetime">0</span>
+                    <span class="sb-mini-lbl">One-Time</span>
+                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-onetime-cost"></span>
                 </div>
-                <div class="stat-card s-physical">
-                    <div class="num" id="c-physical">0</div>
-                    <div class="lbl">Physical</div>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-shutdown">0</span>
+                    <span class="sb-mini-lbl">Shutdown</span>
+                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-shutdown-cost"></span>
                 </div>
-                <div class="stat-card s-leadavg">
-                    <div class="num" id="c-leadavg">—</div>
-                    <div class="lbl">Avg Lead Days (Awarded)</div>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-af">0</span>
+                    <span class="sb-mini-lbl">AF Budget</span>
+                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-af-cost"></span>
                 </div>
-            </div>
-            <!-- Row 4: Department breakdown -->
-            <div class="dept-table">
-                <div class="dept-table-head">
-                    <span>Top Departments</span><span>Count</span>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-gem">0</span>
+                    <span class="sb-mini-lbl">GEM</span>
                 </div>
-                <div id="dept-rows"></div>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-etender">0</span>
+                    <span class="sb-mini-lbl">E-Tender</span>
+                </div>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-physical">0</span>
+                    <span class="sb-mini-lbl">Physical</span>
+                </div>
+                <div class="sb-mini">
+                    <span class="sb-mini-num" id="c-leadavg">—</span>
+                    <span class="sb-mini-lbl">Avg Lead Days</span>
+                </div>
             </div>
         </div>
 
-        <!-- Toolbar -->
-        <div class="toolbar">
+        <div class="sb-sep"></div>
+
+        <!-- Top departments -->
+        <div class="sb-sec">
+            <div class="sb-sec-title">Top Departments</div>
+            <div id="dept-rows"></div>
+        </div>
+
+        <div class="sb-sep"></div>
+
+        <!-- Filters -->
+        <div class="sb-sec" style="padding-bottom:4px;">
+            <div class="sb-sec-title">Filters</div>
+        </div>
+        <div class="sb-filters">
+            <div class="sb-filter">
+                <label>Status</label>
+                <select id="f-status" onchange="applyFilters()">
+                    <option value="">All Status</option>
+                    <option selected>In Progress</option>
+                    <option>Awarded</option>
+                    <option>Cancelled</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Financial Year</label>
+                <select id="f-fy" onchange="applyFilters()">
+                    <option value="">All FY</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Mode</label>
+                <select id="f-mode" onchange="applyFilters()">
+                    <option value="">All Modes</option>
+                    <option>GEM</option>
+                    <option>E-Tender</option>
+                    <option>Physical</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Department</label>
+                <select id="f-dept" onchange="applyFilters()">
+                    <option value="">All Departments</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Tender Type</label>
+                <select id="f-type" onchange="applyFilters()">
+                    <option value="">All Types</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Budget</label>
+                <select id="f-budget" onchange="applyFilters()">
+                    <option value="">All Budget</option>
+                    <option value="AF">AF Only</option>
+                    <option value="Revenue">Revenue Only</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Flags</label>
+                <select id="f-flags" onchange="applyFilters()">
+                    <option value="">All</option>
+                    <option value="critical">🚨 Critical Only</option>
+                    <option value="split">Split Only</option>
+                </select>
+            </div>
+            <div class="sb-filter">
+                <label>Pipeline Stage</label>
+                <select id="f-stage" onchange="applyFilters()">
+                    <option value="">All Stages</option>
+                </select>
+            </div>
+            <button class="sb-clear" onclick="clearFilters()">✕ Clear Filters</button>
+        </div>
+
+        <!-- Actions -->
+        <div class="sb-actions">
+            <button class="sb-btn-primary" onclick="openAdd()">+ Add Tender</button>
+            <button class="sb-btn-ghost" onclick="exportExcel()">⬇ Export Excel</button>
+            <button class="sb-btn-ghost" onclick="openImport()">⬆ Import Excel</button>
+            <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this)">
+            <button class="sb-btn-ghost" id="dedup-btn" onclick="openDedup()">🔍 Find Duplicates</button>
+            <button class="sb-btn-ghost" onclick="changeDB()">⚙ Change DB</button>
+        </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="main-content">
+
+        <!-- Key Dates Bar -->
+        <div id="key-dates-bar" style="display:none;"></div>
+
+        <!-- Search bar + count -->
+        <div class="main-toolbar">
             <div class="search-wrap">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                     <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
                 <input type="text" id="search-input" placeholder="Search any field…" oninput="applyFilters()">
             </div>
-            <select class="filter" id="f-status" onchange="applyFilters()">
-                <option value="">All Status</option>
-                <option selected>In Progress</option>
-                <option>Awarded</option>
-                <option>Cancelled</option>
-            </select>
-            <select class="filter" id="f-fy" onchange="applyFilters()">
-                <option value="">All FY</option>
-            </select>
-            <select class="filter" id="f-mode" onchange="applyFilters()">
-                <option value="">All Modes</option>
-                <option>GEM</option>
-                <option>E-Tender</option>
-                <option>Physical</option>
-            </select>
-            <select class="filter" id="f-dept" onchange="applyFilters()">
-                <option value="">All Departments</option>
-            </select>
-            <select class="filter" id="f-type" onchange="applyFilters()">
-                <option value="">All Types</option>
-            </select>
-            <select class="filter" id="f-budget" onchange="applyFilters()">
-                <option value="">All Budget</option>
-                <option value="AF">AF Only</option>
-                <option value="Revenue">Revenue Only</option>
-            </select>
-            <select class="filter" id="f-flags" onchange="applyFilters()">
-                <option value="">All</option>
-                <option value="critical">🚨 Critical Only</option>
-                <option value="split">Split Only</option>
-            </select>
-            <select class="filter" id="f-stage" onchange="applyFilters()">
-                <option value="">All Stages</option>
-            </select>
-            <button class="btn btn-outline" onclick="clearFilters()">✕ Clear</button>
-            <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
-            <button class="btn btn-outline" onclick="openImport()" title="Import tenders from Excel">⬆ Import Excel</button>
-            <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this)">
-            <button class="btn btn-outline" id="dedup-btn" onclick="openDedup()" title="Find and remove duplicate entries">🔍 Find Duplicates</button>
+            <span class="results-count" id="tbl-count"></span>
         </div>
 
-        <!-- Table -->
-        <div class="table-wrap">
-            <div id="tbl-status" class="status-bar">Connecting…</div>
+        <!-- Status / empty / card list -->
+        <div id="tbl-status" class="status-bar">Connecting…</div>
 
-            <div id="tbl-empty" class="empty-state hidden">
-                <div class="icon">📂</div>
-                <h3>No tenders found</h3>
-                <p>Add your first tender or adjust the filters.</p>
-            </div>
-
-            <div id="tbl-scroll" class="hidden" style="overflow-x:auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:32px;">#</th>
-                            <th>Name of Work</th>
-                            <th style="width:110px;">Status</th>
-                            <th>Pipeline Stages</th>
-                            <th style="width:36px;"></th>
-                            <th style="width:90px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbl-body"></tbody>
-                </table>
-            </div>
+        <div id="tbl-empty" class="empty-state hidden">
+            <div class="icon">📂</div>
+            <h3>No tenders found</h3>
+            <p>Add your first tender or adjust the filters.</p>
         </div>
+
+        <div id="tbl-scroll" class="hidden">
+            <div id="tbl-body"></div>
+        </div>
+
     </main>
 </div>
 
@@ -1586,27 +1451,32 @@ function updateDashboard(rows) {
     const maxCount = sorted[0]?.[1] || 1;
     document.getElementById('dept-rows').innerHTML = sorted.length
         ? sorted.map(([dept, cnt]) => `
-            <div class="dept-table-row">
-                <span style="min-width:120px;font-weight:500;">${esc(dept)}</span>
-                <div class="dept-bar-wrap"><div class="dept-bar" style="width:${Math.round(cnt/maxCount*100)}%"></div></div>
-                <span class="dept-count">${cnt}</span>
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;">
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">${esc(dept)}</span>
+                <div style="width:40px;height:4px;background:var(--sep);border-radius:2px;flex-shrink:0;">
+                    <div style="width:${Math.round(cnt/maxCount*100)}%;height:100%;background:var(--primary);border-radius:2px;"></div>
+                </div>
+                <span style="font-size:11px;font-weight:700;color:var(--text-sub);min-width:16px;text-align:right;">${cnt}</span>
             </div>`).join('')
-        : '<div style="padding:14px 16px;color:var(--text-sub);font-size:13px;">No data</div>';
+        : '<div style="padding:6px 0;color:var(--text-sub);font-size:12px;">No data</div>';
 }
 
 // ── TABLE ──────────────────────────────────────────────
 function renderTable(rows) {
+    const countEl = document.getElementById('tbl-count');
+    if (countEl) countEl.textContent = rows.length + ' tender' + (rows.length !== 1 ? 's' : '');
+
     if (rows.length === 0) {
         hide('tbl-scroll'); show('tbl-empty'); return;
     }
     hide('tbl-empty'); show('tbl-scroll');
 
-    document.getElementById('tbl-body').innerHTML = rows.map((t, i) => {
-        const dim = v => v ? esc(v) : `<span class="cell-dim">—</span>`;
+    const todayStr = new Date().toISOString().slice(0, 10);
 
-        // ── Stage chips (slim; overdue warning)
+    document.getElementById('tbl-body').innerHTML = rows.map(t => {
+        // Stage chips
         const stages = normalizeStages(t.tenderStages || []);
-        const stageChips = stages.map(st => {
+        const stageChipsHtml = stages.map(st => {
             const info = STAGES.find(x => x.id === st.id);
             if (!info) return '';
             const days = stageDays(st.enteredAt);
@@ -1615,90 +1485,103 @@ function renderTable(rows) {
             return `<span class="stage-chip${overdue ? ' stage-chip-overdue' : ''}" style="background:${info.color}" title="${esc(title)}">${esc(info.label)}${overdue ? ` ⚠${days}d` : ''}</span>`;
         }).join('');
 
-        // ── Detail panel (expanded)
+        // Key date pills (show only upcoming / today)
+        const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
+            if (!t[k]) return '';
+            const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
+            if (d < -1) return '';
+            const cls = d <= 0 ? 'kd-today' : d <= 2 ? 'kd-soon' : 'kd-week';
+            const when = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d`;
+            return `<span class="kd-pill ${cls}" style="cursor:default;font-size:11px;padding:2px 8px 2px 6px;"><span class="kd-dot"></span><span class="kd-type">${lbl}</span>: ${when}</span>`;
+        }).join('');
+
+        // Lead days
         const lead = t.allotmentDate ? calcLeadDays(t.allotmentDate, t.woDate) : null;
         const leadCls = !!t.woDate ? 'lead-frozen' : lead === null ? '' : lead <= 30 ? 'lead-ok' : lead <= 90 ? 'lead-warn' : 'lead-alert';
         const leadHtml = lead !== null ? `<span class="lead-pill ${leadCls}">${lead}d${t.woDate ? ' ✓' : ''}</span>` : '—';
 
+        // WO detail
         let woDetailHtml;
         if (t.tenderSplit === 'Yes' && t.workOrders && t.workOrders.length) {
             woDetailHtml = t.workOrders.map((wo, wi) =>
-                `<div style="${wi > 0 ? 'margin-top:6px;border-top:1px solid var(--border);padding-top:6px;' : ''}">
-                    ${wo.woDate ? `<div style="font-size:12px;">${fmtDate(wo.woDate)}</div>` : ''}
-                    ${wo.woNumber ? `<div class="cell-sub">${esc(wo.woNumber)}</div>` : ''}
-                    ${wo.vendorName ? `<div class="cell-sub">${esc(wo.vendorName)}</div>` : ''}
-                    ${wo.landedCost != null ? `<div class="cell-sub" style="color:var(--primary);font-weight:600;">⚑ ${fmtINR(wo.landedCost)}</div>` : ''}
+                `<div${wi > 0 ? ' style="margin-top:5px;padding-top:5px;border-top:1px solid var(--sep);"' : ''}>
+                    ${wo.woDate   ? `<div style="font-size:12px;">${fmtDate(wo.woDate)}</div>` : ''}
+                    ${wo.woNumber ? `<div style="color:var(--text-sub);font-size:11px;">${esc(wo.woNumber)}</div>` : ''}
+                    ${wo.vendorName ? `<div style="color:var(--text-sub);font-size:11px;">${esc(wo.vendorName)}</div>` : ''}
+                    ${wo.landedCost != null ? `<div class="fin-landed">⚑ ${fmtINR(wo.landedCost)}</div>` : ''}
                 </div>`
             ).join('');
         } else if (t.woDate || t.woNumber || t.vendorName) {
             woDetailHtml = `${t.woDate ? `<div style="font-size:12px;">${fmtDate(t.woDate)}</div>` : ''}
-                ${t.woNumber ? `<div class="cell-sub">${esc(t.woNumber)}</div>` : ''}
-                ${t.vendorName ? `<div class="cell-sub">${esc(t.vendorName)}</div>` : ''}`;
+                ${t.woNumber   ? `<div style="color:var(--text-sub);font-size:11px;">${esc(t.woNumber)}</div>` : ''}
+                ${t.vendorName ? `<div style="color:var(--text-sub);font-size:11px;">${esc(t.vendorName)}</div>` : ''}`;
         } else {
             woDetailHtml = '—';
         }
 
         const finDetailHtml = [
             t.valueInclGST    != null ? `<div>incl. <strong>${fmtINR(t.valueInclGST)}</strong></div>` : '',
-            t.valueExclGST    != null ? `<div class="cell-sub">excl. ${fmtINR(t.valueExclGST)}</div>` : '',
+            t.valueExclGST    != null ? `<div style="color:var(--text-sub);font-size:11px;">excl. ${fmtINR(t.valueExclGST)}</div>` : '',
             t.finalLandedCost != null ? `<div class="fin-landed">⚑ ${fmtINR(t.finalLandedCost)}</div>` : '',
         ].join('') || '—';
 
-        return `<tr>
-            <td style="color:#c5c8cf;font-size:11px;">${i + 1}</td>
-            <td style="min-width:220px;max-width:360px;">
-                <div class="cell-main">${esc(t.nameOfWork)}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
-                <div class="cell-sub">${[t.prNo, t.enividaNumber, t.tenderNumber].filter(Boolean).map(esc).join(' · ') || ''}</div>
-            </td>
-            <td style="white-space:nowrap;">${statusBadge(t.status)}</td>
-            <td style="min-width:180px;max-width:300px;">
-                <div class="stage-chips">
-                    ${stageChips}
-                    <button class="stage-add-btn" onclick="openStagePicker('${t.id}',this)" title="Edit stages">+</button>
+        // Key dates for detail panel (all, not just upcoming)
+        const keyDatesHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
+            if (!t[k]) return '';
+            const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
+            const cls = d < 0 ? 'b-cancelled' : d === 0 ? 'b-hold' : d <= 2 ? 'b-hold' : 'b-progress';
+            const when = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d · ${fmtDate(t[k])}`;
+            return `<span class="badge ${cls}" style="font-size:11px;">${lbl}: ${when}</span>`;
+        }).join('');
+
+        return `<div class="tender-card">
+            <div class="card-header" onclick="toggleDetailRow('${t.id}')">
+                <div class="card-top-row">
+                    <div class="card-title-wrap">
+                        <div class="card-title">${esc(t.nameOfWork)}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
+                        <div class="card-refs">${[t.prNo, t.enividaNumber, t.tenderNumber].filter(Boolean).map(esc).join(' · ')}</div>
+                    </div>
+                    <div class="card-right">
+                        ${statusBadge(t.status)}
+                        <button class="card-expand-btn" id="expand-${t.id}">▶</button>
+                    </div>
                 </div>
-            </td>
-            <td><button id="expand-${t.id}" class="btn-expand" onclick="toggleDetailRow('${t.id}')" title="Show details">▶</button></td>
-            <td>
-                <div class="tbl-actions">
-                    <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">Edit</button>
-                    <button class="btn-sm btn-del"  onclick="openDel('${t.id}')">Del</button>
+                <div class="card-meta">${[t.department, t.tenderMode, t.financialYear ? `FY ${esc(t.financialYear)}` : '', t.fileHandler].filter(Boolean).join(' · ')}</div>
+                <div class="card-stages-row">
+                    <div class="stage-chips">
+                        ${stageChipsHtml}
+                        <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages">+</button>
+                    </div>
                 </div>
-            </td>
-        </tr>
-        <tr id="detail-${t.id}" class="detail-row">
-            <td colspan="6">
-                <div class="detail-grid">
-                    <div class="detail-item"><div class="d-lbl">Department</div><div class="d-val">${dim(t.department)}</div></div>
-                    <div class="detail-item"><div class="d-lbl">Mode</div><div class="d-val">${dim(t.tenderMode)}</div></div>
-                    <div class="detail-item"><div class="d-lbl">Nature</div><div class="d-val">${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : '—'}</div></div>
-                    <div class="detail-item"><div class="d-lbl">Budget / Type</div><div class="d-val">${dim(t.budgetType)} ${t.tenderType ? `<span class="cell-sub">· ${esc(t.tenderType)}</span>` : ''}</div></div>
-                    <div class="detail-item"><div class="d-lbl">Allotment Date</div><div class="d-val">${t.allotmentDate ? fmtDate(t.allotmentDate) : '—'} ${leadHtml}</div></div>
-                    <div class="detail-item"><div class="d-lbl">FY / Handler</div><div class="d-val">${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : '—'}${t.fileHandler ? ` <span class="cell-sub">${esc(t.fileHandler)}</span>` : ''}</div></div>
-                    <div class="detail-item"><div class="d-lbl">Work Order</div><div class="d-val">${woDetailHtml}</div></div>
-                    <div class="detail-item"><div class="d-lbl">Financials</div><div class="d-val">${finDetailHtml}</div></div>
-                    ${(t.saleEndDate || t.preBidDate || t.bidOpeningDate || t.raDate) ? `
-                    <div class="detail-item full-span"><div class="d-lbl">Key Dates</div><div class="d-val" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;">
-                        ${[['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k,lbl]) => {
-                            if (!t[k]) return '';
-                            const todayStr = new Date().toISOString().slice(0,10);
-                            const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
-                            const cls = d < 0 ? 'b-cancelled' : d === 0 ? 'tag-critical' : d <= 2 ? 'b-hold' : 'b-progress';
-                            const when = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d · ${fmtDate(t[k])}`;
-                            return `<span class="badge ${cls}" style="font-size:11px;">${lbl}: ${when}</span>`;
-                        }).join('')}
-                    </div></div>` : ''}
-                    ${t.remarks ? `<div class="detail-item full-span"><div class="d-lbl">Remarks</div><div class="d-val" style="white-space:pre-wrap;color:var(--text-sub);">${esc(t.remarks)}</div></div>` : ''}
+                ${datePillsHtml ? `<div class="card-dates-row">${datePillsHtml}</div>` : ''}
+            </div>
+            <div class="card-detail" id="detail-${t.id}">
+                <div class="card-detail-grid">
+                    <div><div class="cd-lbl">Department</div><div class="cd-val">${t.department || '—'}</div></div>
+                    <div><div class="cd-lbl">Mode</div><div class="cd-val">${t.tenderMode || '—'}</div></div>
+                    <div><div class="cd-lbl">Nature</div><div class="cd-val">${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : '—'}</div></div>
+                    <div><div class="cd-lbl">Budget / Type</div><div class="cd-val">${t.budgetType || '—'}${t.tenderType ? ` · ${esc(t.tenderType)}` : ''}</div></div>
+                    <div><div class="cd-lbl">Allotment Date</div><div class="cd-val">${t.allotmentDate ? fmtDate(t.allotmentDate) : '—'} ${leadHtml}</div></div>
+                    <div><div class="cd-lbl">FY / Handler</div><div class="cd-val">${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : '—'}${t.fileHandler ? ` ${esc(t.fileHandler)}` : ''}</div></div>
+                    <div><div class="cd-lbl">Work Order</div><div class="cd-val">${woDetailHtml}</div></div>
+                    <div><div class="cd-lbl">Financials</div><div class="cd-val">${finDetailHtml}</div></div>
+                    ${keyDatesHtml ? `<div class="cd-span"><div class="cd-lbl">Key Dates</div><div class="cd-val" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;">${keyDatesHtml}</div></div>` : ''}
+                    ${t.remarks ? `<div class="cd-span"><div class="cd-lbl">Remarks</div><div class="cd-val" style="white-space:pre-wrap;color:var(--text-sub);">${esc(t.remarks)}</div></div>` : ''}
                 </div>
-            </td>
-        </tr>`;
+            </div>
+            <div class="card-footer">
+                <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">Edit</button>
+                <button class="btn-sm btn-del"  onclick="openDel('${t.id}')">Delete</button>
+            </div>
+        </div>`;
     }).join('');
 }
 
 function toggleDetailRow(id) {
-    const row = document.getElementById('detail-' + id);
+    const panel = document.getElementById('detail-' + id);
     const btn = document.getElementById('expand-' + id);
-    if (!row) return;
-    const open = row.classList.toggle('open');
+    if (!panel) return;
+    const open = panel.classList.toggle('open');
     if (btn) btn.textContent = open ? '▼' : '▶';
 }
 
