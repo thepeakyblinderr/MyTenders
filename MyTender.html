@@ -228,10 +228,11 @@
         }
         .stage-popover-item {
             display: flex; align-items: center; gap: 9px;
-            padding: 7px 14px; cursor: pointer; font-size: 13px;
+            padding: 7px 14px 4px; cursor: pointer; font-size: 13px;
         }
         .stage-popover-item:hover { background: var(--bg); }
         .stage-popover-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; }
+        .stage-popover-entry:hover { background: var(--bg); }
         .stage-dot {
             width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
         }
@@ -590,6 +591,45 @@
         .import-prog-bar { height: 6px; background: #f1f3f4; border-radius: 3px; overflow: hidden; margin-top: 8px; }
         .import-prog-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.2s; }
 
+        /* ── SLIM TABLE / DETAIL ROW ── */
+        .detail-row { display: none; background: #fafbfc; }
+        .detail-row.open { display: table-row; }
+        .detail-grid {
+            display: grid; grid-template-columns: repeat(4,1fr);
+            gap: 10px 24px; padding: 14px 16px 14px 44px;
+            border-top: 1px solid #f1f3f4;
+        }
+        .detail-item .d-lbl {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.4px; color: var(--text-sub); margin-bottom: 2px;
+        }
+        .detail-item .d-val { font-size: 13px; color: var(--text); }
+        .detail-item.full-span { grid-column: 1 / -1; }
+        .btn-expand {
+            background: none; border: 1px solid var(--border); cursor: pointer;
+            font-size: 11px; color: var(--text-sub); padding: 2px 7px; border-radius: 5px;
+        }
+        .btn-expand:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* ── STAGE PICKER ENHANCEMENTS ── */
+        .stage-popover-entry { border-bottom: 1px solid #f5f5f5; }
+        .stage-popover-entry:last-child { border-bottom: none; }
+        .stage-pop-label { flex: 1; min-width: 0; }
+        .stage-days {
+            font-size: 10px; font-weight: 700; padding: 1px 5px;
+            border-radius: 8px; background: #e8f0fe; color: var(--primary); white-space: nowrap;
+        }
+        .stage-days.overdue { background: #fce8e6; color: #c5221f; }
+        .stage-assignee-row {
+            display: flex; align-items: center; gap: 7px;
+            padding: 2px 14px 7px 36px;
+        }
+        .stage-assign-input {
+            font-size: 12px; border: 1px solid var(--border); border-radius: 5px;
+            padding: 3px 8px; flex: 1; background: white; color: var(--text);
+        }
+        .stage-chip-overdue { outline: 2px solid #ea4335; outline-offset: 1px; }
+
         /* ── UTILS ── */
         .hidden { display: none !important; }
 
@@ -794,19 +834,12 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th>
+                            <th style="width:32px;">#</th>
                             <th>Name of Work</th>
-                            <th>Department</th>
-                            <th>Mode</th>
-                            <th>Nature</th>
-                            <th>Status</th>
+                            <th style="width:110px;">Status</th>
                             <th>Pipeline Stages</th>
-                            <th>Allotment / Lead</th>
-                            <th>Work Order</th>
-                            <th>Financials</th>
-                            <th>FY / Handler</th>
-                            <th>Remarks</th>
-                            <th>Actions</th>
+                            <th style="width:36px;"></th>
+                            <th style="width:90px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="tbl-body"></tbody>
@@ -1264,6 +1297,21 @@ function esc(s) {
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Normalize tenderStages — old format was [id, ...], new is [{id, assignedTo, enteredAt}, ...]
+function normalizeStages(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(s => (typeof s === 'number' || typeof s === 'string')
+        ? { id: Number(s), assignedTo: '', enteredAt: null }
+        : s);
+}
+
+function stageDays(enteredAt) {
+    if (!enteredAt) return null;
+    return Math.floor((Date.now() - enteredAt) / 86400000);
+}
+
+const OVERDUE_DAYS = 14;
+
 function toast(msg) {
     const el = document.getElementById('toast');
     el.textContent = msg;
@@ -1334,7 +1382,7 @@ function applyFilters() {
         if (type   && t.tenderType  !== type)                           return false;
         if (budget && t.budgetType  !== budget)                         return false;
         if (!matchFlags(t))                                             return false;
-        if (stage  && !(t.tenderStages||[]).includes(Number(stage)))    return false;
+        if (stage  && !normalizeStages(t.tenderStages||[]).find(s=>s.id===Number(stage))) return false;
         return true;
     });
 
@@ -1347,7 +1395,7 @@ function applyFilters() {
         if (type   && t.tenderType  !== type)                           return false;
         if (budget && t.budgetType  !== budget)                         return false;
         if (!matchFlags(t))                                             return false;
-        if (stage  && !(t.tenderStages||[]).includes(Number(stage)))    return false;
+        if (stage  && !normalizeStages(t.tenderStages||[]).find(s=>s.id===Number(stage))) return false;
         return true;
     });
 
@@ -1448,82 +1496,93 @@ function renderTable(rows) {
     hide('tbl-empty'); show('tbl-scroll');
 
     document.getElementById('tbl-body').innerHTML = rows.map((t, i) => {
-        const lead    = t.allotmentDate ? calcLeadDays(t.allotmentDate, t.woDate) : null;
-        const frozen  = !!t.woDate;
-        const leadCls = frozen ? 'lead-frozen' : lead === null ? '' : lead <= 30 ? 'lead-ok' : lead <= 90 ? 'lead-warn' : 'lead-alert';
-        const leadHtml = lead !== null
-            ? `<div class="lead-pill ${leadCls}">${lead}d${frozen ? ' ✓' : ''}</div>`
-            : `<span class="cell-dim">—</span>`;
+        const dim = v => v ? esc(v) : `<span class="cell-dim">—</span>`;
 
-        const dim = v => v || `<span class="cell-dim">—</span>`;
+        // ── Stage chips (slim; overdue warning)
+        const stages = normalizeStages(t.tenderStages || []);
+        const stageChips = stages.map(st => {
+            const info = STAGES.find(x => x.id === st.id);
+            if (!info) return '';
+            const days = stageDays(st.enteredAt);
+            const overdue = days !== null && days > OVERDUE_DAYS;
+            const title = `${info.label}${st.assignedTo ? ' · ' + st.assignedTo : ''}${days !== null ? ' · ' + days + 'd' : ''}`;
+            return `<span class="stage-chip${overdue ? ' stage-chip-overdue' : ''}" style="background:${info.color}" title="${esc(title)}">${esc(info.label)}${overdue ? ` ⚠${days}d` : ''}</span>`;
+        }).join('');
 
-        const finHtml = (t.valueInclGST || t.finalLandedCost)
-            ? `${t.valueInclGST    ? `<div class="fin-row">incl. <span>${fmtINR(t.valueInclGST)}</span></div>` : ''}
-               ${t.finalLandedCost ? `<div class="fin-landed">⚑ ${fmtINR(t.finalLandedCost)}</div>` : ''}`
-            : `<span class="cell-dim">—</span>`;
+        // ── Detail panel (expanded)
+        const lead = t.allotmentDate ? calcLeadDays(t.allotmentDate, t.woDate) : null;
+        const leadCls = !!t.woDate ? 'lead-frozen' : lead === null ? '' : lead <= 30 ? 'lead-ok' : lead <= 90 ? 'lead-warn' : 'lead-alert';
+        const leadHtml = lead !== null ? `<span class="lead-pill ${leadCls}">${lead}d${t.woDate ? ' ✓' : ''}</span>` : '—';
 
-        let woHtml;
+        let woDetailHtml;
         if (t.tenderSplit === 'Yes' && t.workOrders && t.workOrders.length) {
-            woHtml = t.workOrders.map(function(wo, i) {
-                return `<div style="${i>0?'margin-top:6px;border-top:1px solid var(--border);padding-top:6px;':''}">
-                    ${wo.woDate   ? `<div style="font-size:12px;">${fmtDate(wo.woDate)}</div>` : ''}
+            woDetailHtml = t.workOrders.map((wo, wi) =>
+                `<div style="${wi > 0 ? 'margin-top:6px;border-top:1px solid var(--border);padding-top:6px;' : ''}">
+                    ${wo.woDate ? `<div style="font-size:12px;">${fmtDate(wo.woDate)}</div>` : ''}
                     ${wo.woNumber ? `<div class="cell-sub">${esc(wo.woNumber)}</div>` : ''}
-                    ${wo.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(wo.vendorName)}</div>` : ''}
+                    ${wo.vendorName ? `<div class="cell-sub">${esc(wo.vendorName)}</div>` : ''}
                     ${wo.landedCost != null ? `<div class="cell-sub" style="color:var(--primary);font-weight:600;">⚑ ${fmtINR(wo.landedCost)}</div>` : ''}
-                </div>`;
-            }).join('');
+                </div>`
+            ).join('');
         } else if (t.woDate || t.woNumber || t.vendorName) {
-            woHtml = `${t.woDate   ? `<div style="font-size:12px;">${fmtDate(t.woDate)}</div>` : ''}
-               ${t.woNumber ? `<div class="cell-sub">${esc(t.woNumber)}</div>` : ''}
-               ${t.vendorName ? `<div class="cell-sub" style="color:var(--text);">${esc(t.vendorName)}</div>` : ''}`;
+            woDetailHtml = `${t.woDate ? `<div style="font-size:12px;">${fmtDate(t.woDate)}</div>` : ''}
+                ${t.woNumber ? `<div class="cell-sub">${esc(t.woNumber)}</div>` : ''}
+                ${t.vendorName ? `<div class="cell-sub">${esc(t.vendorName)}</div>` : ''}`;
         } else {
-            woHtml = `<span class="cell-dim">—</span>`;
+            woDetailHtml = '—';
         }
 
+        const finDetailHtml = [
+            t.valueInclGST    != null ? `<div>incl. <strong>${fmtINR(t.valueInclGST)}</strong></div>` : '',
+            t.valueExclGST    != null ? `<div class="cell-sub">excl. ${fmtINR(t.valueExclGST)}</div>` : '',
+            t.finalLandedCost != null ? `<div class="fin-landed">⚑ ${fmtINR(t.finalLandedCost)}</div>` : '',
+        ].join('') || '—';
+
         return `<tr>
-            <td style="color:#c5c8cf;font-size:11px;width:32px;">${i+1}</td>
-            <td style="min-width:200px;max-width:280px;">
+            <td style="color:#c5c8cf;font-size:11px;">${i + 1}</td>
+            <td style="min-width:220px;max-width:360px;">
                 <div class="cell-main">${esc(t.nameOfWork)}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
                 <div class="cell-sub">${[t.prNo, t.enividaNumber, t.tenderNumber].filter(Boolean).map(esc).join(' · ') || ''}</div>
             </td>
-            <td style="white-space:nowrap;">${dim(esc(t.department))}</td>
-            <td style="white-space:nowrap;">
-                <div style="font-size:12px;font-weight:600;">${dim(esc(t.tenderMode))}</div>
-            </td>
-            <td style="white-space:nowrap;">
-                <div>${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : `<span class="cell-dim">—</span>`}</div>
-            </td>
             <td style="white-space:nowrap;">${statusBadge(t.status)}</td>
-            <td style="min-width:180px;max-width:240px;">
+            <td style="min-width:180px;max-width:300px;">
                 <div class="stage-chips">
-                    ${(t.tenderStages||[]).map(sid => {
-                        const s = STAGES.find(x=>x.id===sid);
-                        return s ? `<span class="stage-chip" style="background:${s.color}" title="${esc(s.label)}">${esc(s.label)}</span>` : '';
-                    }).join('')}
+                    ${stageChips}
                     <button class="stage-add-btn" onclick="openStagePicker('${t.id}',this)" title="Edit stages">+</button>
                 </div>
             </td>
-            <td style="white-space:nowrap;">
-                <div style="font-size:12px;">${t.allotmentDate ? fmtDate(t.allotmentDate) : `<span class="cell-dim">—</span>`}</div>
-                ${leadHtml}
-            </td>
-            <td style="min-width:130px;">${woHtml}</td>
-            <td style="min-width:140px;">${finHtml}</td>
-            <td style="white-space:nowrap;">
-                ${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : `<span class="cell-dim">—</span>`}
-                ${t.fileHandler ? `<div class="cell-sub" style="margin-top:4px;">${esc(t.fileHandler)}</div>` : ''}
-            </td>
-            <td class="remarks-cell">${t.remarks
-                ? `<div class="remarks-short" data-full="${esc(t.remarks)}" data-id="${t.id}" onclick="toggleRemark(this,event)" title="Click to read">${esc(t.remarks)}</div>`
-                : `<span class="cell-dim">—</span>`}</td>
+            <td><button id="expand-${t.id}" class="btn-expand" onclick="toggleDetailRow('${t.id}')" title="Show details">▶</button></td>
             <td>
                 <div class="tbl-actions">
                     <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">Edit</button>
                     <button class="btn-sm btn-del"  onclick="openDel('${t.id}')">Del</button>
                 </div>
             </td>
+        </tr>
+        <tr id="detail-${t.id}" class="detail-row">
+            <td colspan="6">
+                <div class="detail-grid">
+                    <div class="detail-item"><div class="d-lbl">Department</div><div class="d-val">${dim(t.department)}</div></div>
+                    <div class="detail-item"><div class="d-lbl">Mode</div><div class="d-val">${dim(t.tenderMode)}</div></div>
+                    <div class="detail-item"><div class="d-lbl">Nature</div><div class="d-val">${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : '—'}</div></div>
+                    <div class="detail-item"><div class="d-lbl">Budget / Type</div><div class="d-val">${dim(t.budgetType)} ${t.tenderType ? `<span class="cell-sub">· ${esc(t.tenderType)}</span>` : ''}</div></div>
+                    <div class="detail-item"><div class="d-lbl">Allotment Date</div><div class="d-val">${t.allotmentDate ? fmtDate(t.allotmentDate) : '—'} ${leadHtml}</div></div>
+                    <div class="detail-item"><div class="d-lbl">FY / Handler</div><div class="d-val">${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : '—'}${t.fileHandler ? ` <span class="cell-sub">${esc(t.fileHandler)}</span>` : ''}</div></div>
+                    <div class="detail-item"><div class="d-lbl">Work Order</div><div class="d-val">${woDetailHtml}</div></div>
+                    <div class="detail-item"><div class="d-lbl">Financials</div><div class="d-val">${finDetailHtml}</div></div>
+                    ${t.remarks ? `<div class="detail-item full-span"><div class="d-lbl">Remarks</div><div class="d-val" style="white-space:pre-wrap;color:var(--text-sub);">${esc(t.remarks)}</div></div>` : ''}
+                </div>
+            </td>
         </tr>`;
     }).join('');
+}
+
+function toggleDetailRow(id) {
+    const row = document.getElementById('detail-' + id);
+    const btn = document.getElementById('expand-' + id);
+    if (!row) return;
+    const open = row.classList.toggle('open');
+    if (btn) btn.textContent = open ? '▼' : '▶';
 }
 
 // ── STAGE PICKER ──────────────────────────────────────
@@ -1556,16 +1615,39 @@ function openStagePicker(tenderId, btn) {
 
 function renderStageList() {
     const t = tenders.find(x => x.id === _stagePickerTenderId);
-    const active = new Set(t ? (t.tenderStages || []) : []);
+    const stages = normalizeStages(t ? (t.tenderStages || []) : []);
+    const activeMap = {};
+    stages.forEach(s => { activeMap[s.id] = s; });
     const q = document.getElementById('stage-search').value.toLowerCase();
     const filtered = q ? STAGES.filter(s => s.label.toLowerCase().includes(q)) : STAGES;
-    document.getElementById('stage-list').innerHTML = filtered.map(s => `
-        <label class="stage-popover-item">
-            <input type="checkbox" ${active.has(s.id) ? 'checked' : ''}
-                onchange="toggleStage(${s.id}, this.checked)">
-            <span class="stage-dot" style="background:${s.color}"></span>
-            <span>${esc(s.label)}</span>
-        </label>`).join('');
+    document.getElementById('stage-list').innerHTML = filtered.map(s => {
+        const active = activeMap[s.id];
+        const days = active ? stageDays(active.enteredAt) : null;
+        const overdue = days !== null && days > OVERDUE_DAYS;
+        const daysHtml = active
+            ? `<span class="stage-days${overdue ? ' overdue' : ''}">${days !== null ? days + 'd' : 'today'}</span>`
+            : '';
+        const assigneeHtml = active
+            ? `<div class="stage-assignee-row">
+                <span style="font-size:12px;">👤</span>
+                <input type="text" class="stage-assign-input" placeholder="Assign to…"
+                    value="${esc(active.assignedTo || '')}"
+                    data-sid="${s.id}"
+                    onchange="updateStageAssignee(${s.id}, this.value)"
+                    onclick="event.stopPropagation()">
+               </div>`
+            : '';
+        return `<div class="stage-popover-entry">
+            <label class="stage-popover-item">
+                <input type="checkbox" ${active ? 'checked' : ''}
+                    onchange="toggleStage(${s.id}, this.checked)">
+                <span class="stage-dot" style="background:${s.color}"></span>
+                <span class="stage-pop-label">${esc(s.label)}</span>
+                ${daysHtml}
+            </label>
+            ${assigneeHtml}
+        </div>`;
+    }).join('');
 }
 
 function filterStageList() { renderStageList(); }
@@ -1573,20 +1655,33 @@ function filterStageList() { renderStageList(); }
 async function toggleStage(stageId, checked) {
     const t = tenders.find(x => x.id === _stagePickerTenderId);
     if (!t) return;
-    let stages = [...(t.tenderStages || [])];
+    let stages = normalizeStages(t.tenderStages || []);
     if (checked) {
-        if (!stages.includes(stageId)) stages.push(stageId);
+        if (!stages.find(s => s.id === stageId)) {
+            stages.push({ id: stageId, assignedTo: '', enteredAt: Date.now() });
+        }
     } else {
-        stages = stages.filter(id => id !== stageId);
+        stages = stages.filter(s => s.id !== stageId);
     }
     t.tenderStages = stages;
-    // Save to Firebase
     try {
         await fbPatch('tenders/' + t.id, { tenderStages: stages });
     } catch(e) { toast('⚠ Stage save failed: ' + e.message); }
-    applyFilters(); // re-render table (chips update)
-    // Re-render popover checkboxes to reflect current state
+    applyFilters();
     renderStageList();
+}
+
+async function updateStageAssignee(stageId, value) {
+    const t = tenders.find(x => x.id === _stagePickerTenderId);
+    if (!t) return;
+    let stages = normalizeStages(t.tenderStages || []);
+    const s = stages.find(s => s.id === stageId);
+    if (s) s.assignedTo = value.trim();
+    t.tenderStages = stages;
+    try {
+        await fbPatch('tenders/' + t.id, { tenderStages: stages });
+    } catch(e) { toast('⚠ Save failed'); }
+    applyFilters();
 }
 
 function closeStagePicker() {
