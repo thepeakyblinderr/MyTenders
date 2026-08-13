@@ -531,7 +531,7 @@ input:focus, select:focus, textarea:focus {
 .vt-btn:not(.active):hover { border-color:var(--primary); color:var(--primary); }
 
 .bf-grid {
-    display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px;
+    display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:16px;
 }
 .bf-card {
     background:var(--card); border-radius:var(--radius);
@@ -810,6 +810,13 @@ input:focus, select:focus, textarea:focus {
                         <span class="bf-head-count" id="bf-dates-count"></span>
                     </div>
                     <div class="bf-body" id="bf-dates"></div>
+                </div>
+                <div class="bf-card">
+                    <div class="bf-head">
+                        <span class="bf-head-title">👤 Workload</span>
+                        <span class="bf-head-count" id="bf-workload-count"></span>
+                    </div>
+                    <div class="bf-body" id="bf-workload"></div>
                 </div>
             </div>
         </div>
@@ -1586,6 +1593,59 @@ function renderBriefing() {
                 '</div>';
         }).join('')
         : '<div class="bf-empty">✅ No dates in next 7 days</div>';
+
+    // ── 4. Workload ──────────────────────────────────────
+    var wlMap = {};
+    tenders.forEach(function(t) {
+        normalizeStages(t.tenderStages || []).forEach(function(st) {
+            var name = (st.assignedTo || '').trim();
+            if (!name) return;
+            if (!wlMap[name]) wlMap[name] = [];
+            var info = STAGES.find(function(x) { return x.id === st.id; });
+            wlMap[name].push({ t: t, info: info, days: stageDays(st.enteredAt) });
+        });
+    });
+    var wlList = Object.keys(wlMap)
+        .map(function(name) { return { name: name, items: wlMap[name] }; })
+        .sort(function(a, b) { return b.items.length - a.items.length; });
+    var wlMax = wlList.length ? wlList[0].items.length : 1;
+
+    document.getElementById('bf-workload-count').textContent = wlList.length + (wlList.length === 1 ? ' person' : ' people');
+    document.getElementById('bf-workload').innerHTML = wlList.length
+        ? wlList.map(function(p) {
+            var pct = Math.round(p.items.length / wlMax * 100);
+            var assigneeRows = p.items.map(function(x) {
+                var stageLabel = x.info ? esc(x.info.label) : '—';
+                var stageColor = x.info ? x.info.color : '#888';
+                var daysHtml = x.days !== null
+                    ? '<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:6px;margin-left:4px;' +
+                      (x.days > OVERDUE_DAYS ? 'background:rgba(255,59,48,.12);color:#c5221f;' : 'background:var(--primary-dim);color:var(--primary);') +
+                      '">' + x.days + 'd</span>'
+                    : '';
+                return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
+                    'border-bottom:1px solid var(--sep);cursor:pointer;transition:background .12s;" ' +
+                    'onclick="openEdit(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
+                    '<span style="width:7px;height:7px;border-radius:50%;background:' + stageColor + ';flex-shrink:0;"></span>' +
+                    '<span style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                        esc(x.t.nameOfWork) +
+                    '</span>' +
+                    '<span style="font-size:11px;color:var(--text-sub);white-space:nowrap;">' + stageLabel + '</span>' +
+                    daysHtml +
+                    '</div>';
+            }).join('');
+
+            return '<div>' +
+                '<div class="bf-row" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">' +
+                    '<div class="bf-row-left">' +
+                        '<div class="bf-row-title">👤 ' + esc(p.name) + '</div>' +
+                    '</div>' +
+                    '<div class="bf-bar-wrap"><div class="bf-bar" style="width:' + pct + '%;background:var(--primary);"></div></div>' +
+                    '<span class="bf-badge" style="background:var(--primary-dim);color:var(--primary);">' + p.items.length + '</span>' +
+                '</div>' +
+                '<div style="display:none;background:#fafafc;border-bottom:1px solid var(--sep);">' + assigneeRows + '</div>' +
+            '</div>';
+        }).join('')
+        : '<div class="bf-empty">No stages assigned yet<br><span style="font-size:11px;margin-top:4px;display:block;">Use the + button on a stage chip to assign someone</span></div>';
 }
 
 function toggleStats() {
