@@ -210,29 +210,33 @@
         /* ── STAGE PICKER POPOVER ── */
         .stage-popover {
             position: fixed; z-index: 9999;
-            background: var(--card); border: 1px solid var(--border);
-            border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-            width: 320px; max-height: 400px;
+            background: #fff; border: 1px solid var(--border);
+            border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+            width: 320px; max-height: 420px;
             display: flex; flex-direction: column;
+            overflow: hidden;
         }
         .stage-popover-search {
-            padding: 10px; border-bottom: 1px solid var(--border);
+            padding: 9px 10px; border-bottom: 1px solid var(--border);
+            background: #f8f9fa; flex-shrink: 0;
         }
         .stage-popover-search input {
-            width: 100%; padding: 7px 10px; border-radius: 6px;
+            width: 100%; padding: 6px 10px; border-radius: 6px;
             border: 1px solid var(--border); font-size: 13px;
-            background: var(--bg); color: var(--text);
+            background: #fff; color: var(--text);
         }
         .stage-popover-list {
-            overflow-y: auto; flex: 1; padding: 6px 0;
+            overflow-y: auto; flex: 1;
         }
+        .stage-popover-entry { border-bottom: 1px solid #f1f3f4; }
+        .stage-popover-entry:last-child { border-bottom: none; }
+        .stage-popover-entry:hover { background: #f8f9fa; }
         .stage-popover-item {
             display: flex; align-items: center; gap: 9px;
-            padding: 7px 14px 4px; cursor: pointer; font-size: 13px;
+            padding: 8px 12px 4px; cursor: pointer; font-size: 13px;
+            background: transparent;
         }
-        .stage-popover-item:hover { background: var(--bg); }
-        .stage-popover-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; }
-        .stage-popover-entry:hover { background: var(--bg); }
+        .stage-popover-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
         .stage-dot {
             width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
         }
@@ -621,13 +625,15 @@
         }
         .stage-days.overdue { background: #fce8e6; color: #c5221f; }
         .stage-assignee-row {
-            display: flex; align-items: center; gap: 7px;
-            padding: 2px 14px 7px 36px;
+            display: flex; align-items: center; gap: 6px;
+            padding: 2px 12px 8px 36px; background: transparent;
         }
         .stage-assign-input {
-            font-size: 12px; border: 1px solid var(--border); border-radius: 5px;
-            padding: 3px 8px; flex: 1; background: white; color: var(--text);
+            font-size: 12px; border: 1px solid #e0e0e0; border-radius: 5px;
+            padding: 4px 8px; flex: 1; background: #fff; color: var(--text);
+            outline: none;
         }
+        .stage-assign-input:focus { border-color: var(--primary); }
         .stage-chip-overdue { outline: 2px solid #ea4335; outline-offset: 1px; }
 
         /* ── UTILS ── */
@@ -1598,17 +1604,18 @@ function openStagePicker(tenderId, btn) {
     document.getElementById('stage-search').value = '';
     renderStageList();
     pop.style.display = 'flex';
-    // Position below the button
+    // Position relative to viewport (position:fixed — no scrollY adjustment)
     const rect = btn.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
+    pop.style.bottom = 'auto';
+    pop.style.top = 'auto';
     if (spaceBelow >= 300) {
-        pop.style.top  = (rect.bottom + 6 + window.scrollY) + 'px';
-        pop.style.bottom = 'auto';
+        pop.style.top = (rect.bottom + 6) + 'px';
     } else {
-        pop.style.top  = 'auto';
         pop.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
     }
-    pop.style.left = Math.min(rect.left, window.innerWidth - 330) + 'px';
+    const leftEdge = Math.min(rect.left, window.innerWidth - 332);
+    pop.style.left = Math.max(4, leftEdge) + 'px';
     // Populate stage filter dropdown
     buildStageFilter();
 }
