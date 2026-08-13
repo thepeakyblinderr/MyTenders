@@ -595,6 +595,38 @@
         .import-prog-bar { height: 6px; background: #f1f3f4; border-radius: 3px; overflow: hidden; margin-top: 8px; }
         .import-prog-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.2s; }
 
+        /* ── KEY DATES ALERT BAR ── */
+        #key-dates-bar {
+            background: #fff; border-bottom: 3px solid #f9ab00;
+            padding: 10px 22px; display: flex; align-items: flex-start;
+            gap: 12px; flex-wrap: wrap;
+        }
+        .kd-bar-title {
+            font-size: 12px; font-weight: 700; color: #7a5800;
+            white-space: nowrap; padding-top: 3px; flex-shrink: 0;
+        }
+        .kd-bar-events { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
+        .kd-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            border-radius: 20px; padding: 4px 12px 4px 9px;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            border: 1px solid transparent; transition: opacity 0.15s;
+        }
+        .kd-pill:hover { opacity: 0.8; }
+        .kd-pill .kd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .kd-pill .kd-type { font-weight: 700; font-size: 11px; }
+        .kd-pill.kd-today  { background: #fce8e6; border-color: #ea4335; color: #c5221f; }
+        .kd-pill.kd-soon   { background: #fef7e0; border-color: #f9ab00; color: #7a5800; }
+        .kd-pill.kd-week   { background: #e8f0fe; border-color: #aecbfa; color: #1a73e8; }
+        .kd-pill.kd-today .kd-dot  { background: #ea4335; }
+        .kd-pill.kd-soon  .kd-dot  { background: #f9ab00; }
+        .kd-pill.kd-week  .kd-dot  { background: #1a73e8; }
+        .kd-bar-close {
+            background: none; border: none; cursor: pointer; font-size: 18px;
+            color: #9e9e9e; padding: 0 4px; flex-shrink: 0; line-height: 1;
+        }
+        .kd-bar-close:hover { color: #555; }
+
         /* ── SLIM TABLE / DETAIL ROW ── */
         .detail-row { display: none; background: #fafbfc; }
         .detail-row.open { display: table-row; }
@@ -692,6 +724,9 @@
             <button class="btn btn-primary" onclick="openAdd()">+ Add Tender</button>
         </div>
     </header>
+
+    <!-- ── KEY DATES ALERT BAR ── -->
+    <div id="key-dates-bar" style="display:none;"></div>
 
     <main>
         <!-- Dashboard Row 1 -->
@@ -1002,6 +1037,25 @@
                 <div class="field" id="result-date-row" style="display:none;">
                     <label id="result-date-lbl">Result Date</label>
                     <input type="date" id="m-result-date">
+                </div>
+
+                <div class="sec-label">Key Dates</div>
+
+                <div class="field">
+                    <label>Sale End Date</label>
+                    <input type="date" id="m-sale-end">
+                </div>
+                <div class="field">
+                    <label>Pre-Bid Meeting Date</label>
+                    <input type="date" id="m-prebid">
+                </div>
+                <div class="field">
+                    <label>Bid Submission / Opening Date</label>
+                    <input type="date" id="m-bid-open">
+                </div>
+                <div class="field">
+                    <label>RA (Reverse Auction) Date</label>
+                    <input type="date" id="m-ra-date">
                 </div>
 
                 <div class="sec-label">Work Order</div>
@@ -1318,6 +1372,51 @@ function stageDays(enteredAt) {
 
 const OVERDUE_DAYS = 14;
 
+// ── KEY DATES ──────────────────────────────────────────
+const KEY_DATE_FIELDS = [
+    { key: 'saleEndDate',   label: 'Sale End'     },
+    { key: 'preBidDate',    label: 'Pre-Bid'      },
+    { key: 'bidOpeningDate',label: 'Bid Opening'  },
+    { key: 'raDate',        label: 'RA'           },
+];
+
+function renderKeyDatesBar() {
+    const bar = document.getElementById('key-dates-bar');
+    if (!bar) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+    const events = [];
+    tenders.forEach(t => {
+        if (t.status === 'Awarded' || t.status === 'Cancelled') return;
+        KEY_DATE_FIELDS.forEach(({ key, label }) => {
+            const d = t[key];
+            if (!d || d < todayStr || d > in7) return;
+            const daysLeft = Math.round((new Date(d) - new Date(todayStr)) / 86400000);
+            events.push({ t, label, date: d, daysLeft });
+        });
+    });
+
+    if (!events.length) { bar.style.display = 'none'; return; }
+    events.sort((a, b) => a.date.localeCompare(b.date));
+
+    bar.style.display = 'flex';
+    const pills = events.map(ev => {
+        const cls = ev.daysLeft === 0 ? 'kd-today' : ev.daysLeft <= 2 ? 'kd-soon' : 'kd-week';
+        const when = ev.daysLeft === 0 ? 'TODAY' : ev.daysLeft === 1 ? 'Tomorrow' : `${ev.daysLeft}d · ${fmtDate(ev.date)}`;
+        const name = esc(ev.t.nameOfWork.length > 35 ? ev.t.nameOfWork.slice(0, 34) + '…' : ev.t.nameOfWork);
+        return `<span class="kd-pill ${cls}" onclick="openEdit('${ev.t.id}')" title="${esc(ev.t.nameOfWork)}">
+            <span class="kd-dot"></span>
+            <span class="kd-type">${ev.label}</span>
+            <span>${name} — ${when}</span>
+        </span>`;
+    }).join('');
+
+    bar.innerHTML = `<span class="kd-bar-title">📅 Upcoming Key Dates</span>
+        <div class="kd-bar-events">${pills}</div>
+        <button class="kd-bar-close" onclick="document.getElementById('key-dates-bar').style.display='none'" title="Dismiss">×</button>`;
+}
+
 function toast(msg) {
     const el = document.getElementById('toast');
     el.textContent = msg;
@@ -1408,6 +1507,7 @@ function applyFilters() {
     filteredRows = rows;
     updateDashboard(statsRows);
     renderTable(rows);
+    renderKeyDatesBar();
 }
 
 function toggleStats() {
@@ -1576,6 +1676,17 @@ function renderTable(rows) {
                     <div class="detail-item"><div class="d-lbl">FY / Handler</div><div class="d-val">${t.financialYear ? `<span class="fy-chip">${esc(t.financialYear)}</span>` : '—'}${t.fileHandler ? ` <span class="cell-sub">${esc(t.fileHandler)}</span>` : ''}</div></div>
                     <div class="detail-item"><div class="d-lbl">Work Order</div><div class="d-val">${woDetailHtml}</div></div>
                     <div class="detail-item"><div class="d-lbl">Financials</div><div class="d-val">${finDetailHtml}</div></div>
+                    ${(t.saleEndDate || t.preBidDate || t.bidOpeningDate || t.raDate) ? `
+                    <div class="detail-item full-span"><div class="d-lbl">Key Dates</div><div class="d-val" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;">
+                        ${[['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k,lbl]) => {
+                            if (!t[k]) return '';
+                            const todayStr = new Date().toISOString().slice(0,10);
+                            const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
+                            const cls = d < 0 ? 'b-cancelled' : d === 0 ? 'tag-critical' : d <= 2 ? 'b-hold' : 'b-progress';
+                            const when = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d · ${fmtDate(t[k])}`;
+                            return `<span class="badge ${cls}" style="font-size:11px;">${lbl}: ${when}</span>`;
+                        }).join('')}
+                    </div></div>` : ''}
                     ${t.remarks ? `<div class="detail-item full-span"><div class="d-lbl">Remarks</div><div class="d-val" style="white-space:pre-wrap;color:var(--text-sub);">${esc(t.remarks)}</div></div>` : ''}
                 </div>
             </td>
@@ -1760,6 +1871,10 @@ function openEdit(id) {
     set('m-val-excl',     t.valueExclGST ?? '');
     set('m-landed',       t.finalLandedCost ?? '');
     set('m-remarks',      t.remarks);
+    set('m-sale-end',     t.saleEndDate    ?? '');
+    set('m-prebid',       t.preBidDate     ?? '');
+    set('m-bid-open',     t.bidOpeningDate ?? '');
+    set('m-ra-date',      t.raDate         ?? '');
     // Populate WO fields based on split type
     document.getElementById('wo-list').innerHTML = '';
     if (t.tenderSplit === 'Yes') {
@@ -1789,7 +1904,8 @@ function bgClick(e) { if (e.target.id === 'modal-bg') closeModal(); }
 function resetForm() {
     ['m-name','m-enivida','m-tender-no','m-handler',
      'm-allot','m-result-date','m-val-incl','m-val-excl','m-remarks',
-     'm-dept-other','m-pr-no','m-wo-no','m-wo-date','m-vendor'].forEach(id => set(id, ''));
+     'm-dept-other','m-pr-no','m-wo-no','m-wo-date','m-vendor',
+     'm-sale-end','m-prebid','m-bid-open','m-ra-date'].forEach(id => set(id, ''));
     set('m-dept', '');
     document.getElementById('other-dept-wrap').style.display = 'none';
     set('m-mode',        'GEM');
@@ -2002,6 +2118,10 @@ async function saveTender() {
         valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
         finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
         remarks:         get('m-remarks'),
+        saleEndDate:     get('m-sale-end')   || null,
+        preBidDate:      get('m-prebid')     || null,
+        bidOpeningDate:  get('m-bid-open')   || null,
+        raDate:          get('m-ra-date')    || null,
     };
 
     const btn = document.getElementById('save-btn');
