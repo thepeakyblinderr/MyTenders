@@ -555,6 +555,50 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
   box-shadow:0 4px 24px rgba(0,0,0,.15);}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 .hidden{display:none!important;}
+
+/* ── BRIEFING VIEW ── */
+.view-toggle{display:flex;gap:6px;padding:10px 16px 2px;flex-wrap:wrap;align-items:center;}
+.vt-btn{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border2);background:var(--card2);color:var(--dim);
+  font-family:var(--mono);transition:all .15s;}
+.vt-btn.active{background:var(--accent2);color:#1a1a2e;border-color:var(--accent2);}
+.vt-btn:not(.active):hover{border-color:var(--border);color:var(--text);}
+
+#briefing{display:none;padding:0 16px 32px;}
+#briefing.show{display:block;}
+
+.bf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:12px;}
+@media(max-width:900px){.bf-grid{grid-template-columns:1fr;}}
+
+.bf-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.bf-head{padding:12px 16px 10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;}
+.bf-head-title{font-size:13px;font-weight:700;color:var(--text);}
+.bf-head-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;
+  background:var(--card2);color:var(--dim);}
+.bf-body{max-height:340px;overflow-y:auto;}
+
+.bf-row{display:flex;align-items:center;gap:10px;padding:9px 14px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.bf-row:last-child{border-bottom:none;}
+.bf-row:hover{background:var(--card2);}
+.bf-row-left{flex:1;min-width:0;}
+.bf-row-title{font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bf-row-sub{font-size:11px;color:var(--dim);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bf-row-badge{flex-shrink:0;font-size:11px;font-weight:700;padding:2px 8px;
+  border-radius:10px;white-space:nowrap;}
+.bf-bar-wrap{flex-shrink:0;width:60px;height:5px;background:var(--border);border-radius:3px;}
+.bf-bar{height:100%;border-radius:3px;transition:width .3s;}
+.bf-empty{padding:28px 16px;text-align:center;color:var(--dim);font-size:13px;}
+
+.stuck-ok    {background:rgba(52,199,89,.15); color:#1a7a35;}
+.stuck-warn  {background:rgba(255,149,0,.15); color:#a05e00;}
+.stuck-alert {background:rgba(255,59,48,.12); color:#c5221f;}
+.date-today  {background:rgba(255,59,48,.12); color:#c5221f;}
+.date-soon   {background:rgba(255,149,0,.12); color:#a05e00;}
+.date-week   {background:rgba(26,86,219,.10); color:var(--accent2);}
 </style>
 <script>
 if('serviceWorker' in navigator){
@@ -597,7 +641,44 @@ if('serviceWorker' in navigator){
     <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🚨&nbsp;Critical&nbsp;<b id="s-high">0</b></div>
     <div class="stat-chip btn" id="pf-af"   onclick="setPF('af')">🔷&nbsp;AF&nbsp;<b id="s-af">0</b></div>
   </div>
-  <div class="board" id="board"></div>
+
+  <!-- View toggle -->
+  <div class="view-toggle">
+    <button class="vt-btn active" id="vt-briefing" onclick="setView('briefing')">⚡ Briefing</button>
+    <button class="vt-btn" id="vt-board" onclick="setView('board')">🗂 Board</button>
+  </div>
+
+  <!-- Briefing panel -->
+  <div id="briefing" class="show">
+    <div class="bf-grid">
+      <!-- Stage Congestion -->
+      <div class="bf-card">
+        <div class="bf-head">
+          <span class="bf-head-title">🗂 Stage Congestion</span>
+          <span class="bf-head-count" id="bf-stage-count">—</span>
+        </div>
+        <div class="bf-body" id="bf-stages"></div>
+      </div>
+      <!-- Stuck Tenders -->
+      <div class="bf-card">
+        <div class="bf-head">
+          <span class="bf-head-title">⏱ Stuck Tenders</span>
+          <span class="bf-head-count" id="bf-stuck-count">—</span>
+        </div>
+        <div class="bf-body" id="bf-stuck"></div>
+      </div>
+      <!-- Upcoming Dates -->
+      <div class="bf-card">
+        <div class="bf-head">
+          <span class="bf-head-title">📅 Upcoming (7 days)</span>
+          <span class="bf-head-count" id="bf-dates-count">—</span>
+        </div>
+        <div class="bf-body" id="bf-dates"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="board" id="board" style="display:none;"></div>
 </div>
 </main>
 
@@ -2091,6 +2172,121 @@ function openStagePicker(tid, anchorEl){
   setTimeout(function(){ document.addEventListener('click', _stagePickerOutside); }, 10);
 }
 
+// ── VIEW TOGGLE ───────────────────────────────────────
+var _currentView = 'briefing';
+
+function setView(v){
+  _currentView = v;
+  var briefing = document.getElementById('briefing');
+  var board    = document.getElementById('board');
+  var btnB = document.getElementById('vt-briefing');
+  var btnK = document.getElementById('vt-board');
+  if(v === 'briefing'){
+    briefing.classList.add('show'); board.style.display = 'none';
+    btnB.classList.add('active');   btnK.classList.remove('active');
+    renderBriefing();
+  } else {
+    briefing.classList.remove('show'); board.style.display = '';
+    btnK.classList.add('active');      btnB.classList.remove('active');
+  }
+}
+
+var _STUCK_DAYS = 7;
+
+function renderBriefing(){
+  var todayMs = (function(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+  var todayStr = new Date().toISOString().slice(0,10);
+  var in7Str   = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+
+  // ── 1. Stage Congestion ───────────────────────────
+  var stageMap = {};
+  STAGES.forEach(function(s){ stageMap[s.id] = []; });
+  tenders.forEach(function(t){
+    (t.stages||[]).forEach(function(sid){ if(stageMap[sid]) stageMap[sid].push(t); });
+  });
+  var congested = STAGES
+    .map(function(s){ return {s:s, items:stageMap[s.id]}; })
+    .filter(function(x){ return x.items.length > 0; })
+    .sort(function(a,b){ return b.items.length - a.items.length; });
+  var maxCnt = congested.length ? congested[0].items.length : 1;
+
+  document.getElementById('bf-stage-count').textContent = congested.length + ' active';
+  document.getElementById('bf-stages').innerHTML = congested.length ? congested.map(function(x){
+    var pct = Math.round(x.items.length / maxCnt * 100);
+    var color = x.s.color || 'var(--accent)';
+    return '<div class="bf-row" onclick="setView(\'board\');document.getElementById(\'search\').value=\''+x.s.label.replace(/'/g,'')+'\';render()">' +
+      '<span style="width:10px;height:10px;border-radius:50%;background:'+color+';flex-shrink:0;display:inline-block;"></span>' +
+      '<div class="bf-row-left">' +
+        '<div class="bf-row-title">'+esc(x.s.label)+'</div>' +
+      '</div>' +
+      '<div class="bf-bar-wrap"><div class="bf-bar" style="width:'+pct+'%;background:'+color+';"></div></div>' +
+      '<span class="bf-row-badge" style="background:'+color+'22;color:'+color+';">'+x.items.length+'</span>' +
+    '</div>';
+  }).join('') : '<div class="bf-empty">No active tenders</div>';
+
+  // ── 2. Stuck Tenders ──────────────────────────────
+  var stuckList = [];
+  tenders.forEach(function(t){
+    (t.stages||[]).forEach(function(sid){
+      var age = stageAge(t, sid);
+      if(age === null || age < _STUCK_DAYS) return;
+      var s = STAGES.find(function(x){ return x.id===sid; });
+      if(!s) return;
+      stuckList.push({t:t, sid:sid, sLabel:s.label, sColor:s.color, age:age});
+    });
+  });
+  stuckList.sort(function(a,b){ return b.age - a.age; });
+
+  document.getElementById('bf-stuck-count').textContent = stuckList.length + (stuckList.length===1?' tender':' tenders');
+  document.getElementById('bf-stuck').innerHTML = stuckList.length ? stuckList.map(function(x){
+    var cls = x.age >= 21 ? 'stuck-alert' : x.age >= 14 ? 'stuck-warn' : 'stuck-ok';
+    var dot = x.sColor || 'var(--accent)';
+    return '<div class="bf-row" onclick="openDetail(\''+x.t.id+'\')">' +
+      '<span style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0;display:inline-block;margin-top:2px;"></span>' +
+      '<div class="bf-row-left">' +
+        '<div class="bf-row-title">'+(x.t.no||esc(x.t.nameOfWork||''))+'</div>' +
+        '<div class="bf-row-sub">'+esc(x.sLabel)+(x.t.priority==='high'?' 🚨':'')+(x.t.isAF?' 🔷':'')+'</div>' +
+      '</div>' +
+      '<span class="bf-row-badge '+cls+'">'+x.age+'d</span>' +
+    '</div>';
+  }).join('') : '<div class="bf-empty">✅ Nothing stuck &gt;'+_STUCK_DAYS+' days</div>';
+
+  // ── 3. Upcoming Key Dates ──────────────────────────
+  var DATE_FIELDS = [
+    {key:'saleEnd',  label:'Sale End'},
+    {key:'preBid',   label:'Pre-Bid'},
+    {key:'techBid',  label:'Tech Bid Opening'},
+    {key:'priceBid', label:'Price Bid Opening'},
+    {key:'ra',       label:'Reverse Auction'},
+    {key:'validity', label:'Bid Validity'},
+  ];
+  var upcoming = [];
+  tenders.forEach(function(t){
+    DATE_FIELDS.forEach(function(f){
+      var d = t[f.key];
+      if(!d) return;
+      var ds = (typeof d === 'string') ? d : new Date(d).toISOString().slice(0,10);
+      if(ds < todayStr || ds > in7Str) return;
+      var dl = Math.round((new Date(ds) - new Date(todayStr)) / 86400000);
+      upcoming.push({t:t, label:f.label, date:ds, dl:dl});
+    });
+  });
+  upcoming.sort(function(a,b){ return a.dl-b.dl || a.date.localeCompare(b.date); });
+
+  document.getElementById('bf-dates-count').textContent = upcoming.length + (upcoming.length===1?' event':' events');
+  document.getElementById('bf-dates').innerHTML = upcoming.length ? upcoming.map(function(x){
+    var cls  = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
+    var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in '+x.dl+'d';
+    return '<div class="bf-row" onclick="openDetail(\''+x.t.id+'\')">' +
+      '<div class="bf-row-left">' +
+        '<div class="bf-row-title">'+(x.t.no||esc(x.t.nameOfWork||''))+'</div>' +
+        '<div class="bf-row-sub">'+esc(x.label)+' · '+fmt(x.date)+'</div>' +
+      '</div>' +
+      '<span class="bf-row-badge '+cls+'">'+when+'</span>' +
+    '</div>';
+  }).join('') : '<div class="bf-empty">✅ No dates in next 7 days</div>';
+}
+
 // ── RENDER BOARD ──────────────────────────────────────
 function render(){
   const _fuCache = getFU();  // parse localStorage once per render, not per chip
@@ -2140,6 +2336,7 @@ function render(){
   const ec = document.getElementById('s-expiry-chip');
   if(ec){ expiring ? ec.classList.remove('hidden') : ec.classList.add('hidden'); }
   refreshBadge();
+  if(_currentView === 'briefing') renderBriefing();
 
   const board = document.getElementById('board');
   if(!list.length){
@@ -2149,6 +2346,7 @@ function render(){
         '<div class="board-empty-title">'+ (_viewAs ? 'No tenders assigned to you yet' : 'No tenders yet') +'</div>'+
         '<div class="board-empty-sub">'+ (_viewAs ? 'Ask your manager to assign tenders to you' : 'Tap + Add to get started') +'</div>'+
       '</div>';
+    if(_currentView !== 'briefing') return;
     return;
   }
 
