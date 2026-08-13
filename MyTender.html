@@ -192,6 +192,50 @@
 
         select.filter { padding: 8px 10px; cursor: pointer; }
 
+        /* ── STAGE CHIPS ── */
+        .stage-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+        .stage-chip {
+            display: inline-block; font-size: 10px; font-weight: 600;
+            padding: 2px 7px; border-radius: 10px; color: #fff;
+            white-space: nowrap; max-width: 180px; overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .stage-add-btn {
+            font-size: 16px; line-height: 1; padding: 0 5px;
+            border: 1px dashed var(--border); border-radius: 10px;
+            background: none; cursor: pointer; color: var(--text-sub);
+        }
+        .stage-add-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* ── STAGE PICKER POPOVER ── */
+        .stage-popover {
+            position: fixed; z-index: 9999;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            width: 320px; max-height: 400px;
+            display: flex; flex-direction: column;
+        }
+        .stage-popover-search {
+            padding: 10px; border-bottom: 1px solid var(--border);
+        }
+        .stage-popover-search input {
+            width: 100%; padding: 7px 10px; border-radius: 6px;
+            border: 1px solid var(--border); font-size: 13px;
+            background: var(--bg); color: var(--text);
+        }
+        .stage-popover-list {
+            overflow-y: auto; flex: 1; padding: 6px 0;
+        }
+        .stage-popover-item {
+            display: flex; align-items: center; gap: 9px;
+            padding: 7px 14px; cursor: pointer; font-size: 13px;
+        }
+        .stage-popover-item:hover { background: var(--bg); }
+        .stage-popover-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; }
+        .stage-dot {
+            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+        }
+
         /* ── BUTTONS ── */
         .btn {
             padding: 8px 17px;
@@ -726,6 +770,9 @@
                 <option value="critical">🚨 Critical Only</option>
                 <option value="split">Split Only</option>
             </select>
+            <select class="filter" id="f-stage" onchange="applyFilters()">
+                <option value="">All Stages</option>
+            </select>
             <button class="btn btn-outline" onclick="clearFilters()">✕ Clear</button>
             <button class="btn btn-outline" onclick="exportExcel()" title="Export visible rows to Excel">⬇ Export Excel</button>
             <button class="btn btn-outline" onclick="openImport()" title="Import tenders from Excel">⬆ Import Excel</button>
@@ -753,6 +800,7 @@
                             <th>Mode</th>
                             <th>Nature</th>
                             <th>Status</th>
+                            <th>Pipeline Stages</th>
                             <th>Allotment / Lead</th>
                             <th>Work Order</th>
                             <th>Financials</th>
@@ -994,6 +1042,14 @@
     </div>
 </div>
 
+<!-- ═══ STAGE PICKER POPOVER ═══ -->
+<div id="stage-popover" class="stage-popover" style="display:none;">
+    <div class="stage-popover-search">
+        <input type="text" id="stage-search" placeholder="Search stages…" oninput="filterStageList()">
+    </div>
+    <div class="stage-popover-list" id="stage-list"></div>
+</div>
+
 <!-- ═══ IMPORT MODAL ═══ -->
 <div id="import-bg" class="backdrop hidden" onclick="importBgClick(event)">
     <div class="modal import-modal">
@@ -1027,6 +1083,48 @@
 <div id="remarks-popover"></div>
 
 <script>
+// ── PIPELINE STAGES ───────────────────────────────────
+const STAGES = [
+  {id:0 , label:'PR Received Under Scrutiny',                       color:'#94a3b8'},
+  {id:1 , label:'PR Observation Sent / Marked for Discrepancies',   color:'#f472b6'},
+  {id:2 , label:'Tender Under Prep',                                color:'#7dd3fc'},
+  {id:3 , label:'Tender Under Approval',                            color:'#60a5fa'},
+  {id:4 , label:'Tender on Sale',                                   color:'#38bdf8'},
+  {id:37, label:'Corrigendum to be Published',                      color:'#f472b6'},
+  {id:35, label:'Offer Forwarding',                                 color:'#67e8f9'},
+  {id:36, label:'CBA Preparation',                                  color:'#22d3ee'},
+  {id:5 , label:'Under Technical Evaluation',                       color:'#93c5fd'},
+  {id:6 , label:'Offers Under Evaluation in Contract Cell',         color:'#c084fc'},
+  {id:7 , label:'TR Observations Sent for Review',                  color:'#fbbf24'},
+  {id:8 , label:'TCQ Under Preparation',                            color:'#fb923c'},
+  {id:9 , label:'Under TCQ',                                        color:'#fb923c'},
+  {id:10, label:'FTR Awaited',                                      color:'#2dd4bf'},
+  {id:11, label:'CBA Checking',                                     color:'#38bdf8'},
+  {id:12, label:'TC / Proposal for PBO Under Preparation',          color:'#ef4444'},
+  {id:13, label:'TC / Proposal for PBO Put Up',                     color:'#ca8a04'},
+  {id:32, label:'PBO Freeze Pending',                               color:'#a78bfa'},
+  {id:14, label:'Evaluation Freezed. PBO Scheduled',                color:'#34d399'},
+  {id:15, label:'Price Bid Opened. Under Reverse Auction',          color:'#4ade80'},
+  {id:16, label:'Price Bids Opened. Under Estimate Review',         color:'#86efac'},
+  {id:17, label:'Price Negotiation Approval Put Up',                color:'#fbbf24'},
+  {id:31, label:'Under Negotiation',                                color:'#f59e0b'},
+  {id:33, label:'MOM Sign Pending',                                 color:'#f472b6'},
+  {id:34, label:'GeM Negotiated Rate Update',                       color:'#86efac'},
+  {id:18, label:'Price Workability Awaited from Indenter',          color:'#fb7185'},
+  {id:19, label:'Price Workability Awaited from Bidder',            color:'#f97316'},
+  {id:20, label:'Price Reasonability Awaited',                      color:'#e879f9'},
+  {id:21, label:'Under Price Matching',                             color:'#e879f9'},
+  {id:22, label:'Under Document Verification',                      color:'#6ee7b7'},
+  {id:23, label:'CS Checking',                                      color:'#2dd4bf'},
+  {id:24, label:'TC / Proposal for Award Under Preparation',        color:'#3b9eff'},
+  {id:25, label:'TC / Proposal for Award Put Up',                   color:'#60a5fa'},
+  {id:26, label:'LOA Under Prep',                                   color:'#86efac'},
+  {id:27, label:'SAP Release Pending',                              color:'#fde68a'},
+  {id:28, label:'AOC Pending',                                      color:'#3b9eff'},
+  {id:29, label:'Tender Cancellation Approval Put Up',              color:'#f97316'},
+  {id:30, label:'Others',                                           color:'#475569'},
+];
+
 // ── STATE ─────────────────────────────────────────────
 let DB_URL       = '';
 let tenders      = [];   // [{id, ...data}]
@@ -1037,6 +1135,7 @@ let delId        = null;
 // ── INIT ─────────────────────────────────────────────
 window.onload = () => {
     DB_URL = localStorage.getItem('mytenders_db_url') || '';
+    buildStageFilter();
     if (DB_URL) {
         show('app');
         loadTenders();
@@ -1203,6 +1302,7 @@ function applyFilters() {
     const type   = document.getElementById('f-type').value;
     const budget = document.getElementById('f-budget').value;
     const flags  = document.getElementById('f-flags').value; // 'critical' | 'split' | ''
+    const stage  = document.getElementById('f-stage').value; // stage id string or ''
 
     function matchSearch(t) {
         if (!q) return true;
@@ -1226,27 +1326,28 @@ function applyFilters() {
     }
 
     const rows = tenders.filter(t => {
-        if (!matchSearch(t))                    return false;
-        if (stat   && t.status      !== stat)   return false;
-        if (fy     && t.financialYear !== fy)   return false;
-        if (mode   && t.tenderMode  !== mode)   return false;
-        if (dept   && t.department  !== dept)   return false;
-        if (type   && t.tenderType  !== type)   return false;
-        if (budget && t.budgetType  !== budget) return false;
-        if (!matchFlags(t))                     return false;
+        if (!matchSearch(t))                                             return false;
+        if (stat   && t.status      !== stat)                           return false;
+        if (fy     && t.financialYear !== fy)                           return false;
+        if (mode   && t.tenderMode  !== mode)                           return false;
+        if (dept   && t.department  !== dept)                           return false;
+        if (type   && t.tenderType  !== type)                           return false;
+        if (budget && t.budgetType  !== budget)                         return false;
+        if (!matchFlags(t))                                             return false;
+        if (stage  && !(t.tenderStages||[]).includes(Number(stage)))    return false;
         return true;
     });
 
     // Stats count from all tenders matching every filter EXCEPT status
-    // so Cancelled/Awarded/In Progress counts are always visible regardless of status filter
     const statsRows = tenders.filter(t => {
-        if (!matchSearch(t))                    return false;
-        if (fy     && t.financialYear !== fy)   return false;
-        if (mode   && t.tenderMode  !== mode)   return false;
-        if (dept   && t.department  !== dept)   return false;
-        if (type   && t.tenderType  !== type)   return false;
-        if (budget && t.budgetType  !== budget) return false;
-        if (!matchFlags(t))                     return false;
+        if (!matchSearch(t))                                             return false;
+        if (fy     && t.financialYear !== fy)                           return false;
+        if (mode   && t.tenderMode  !== mode)                           return false;
+        if (dept   && t.department  !== dept)                           return false;
+        if (type   && t.tenderType  !== type)                           return false;
+        if (budget && t.budgetType  !== budget)                         return false;
+        if (!matchFlags(t))                                             return false;
+        if (stage  && !(t.tenderStages||[]).includes(Number(stage)))    return false;
         return true;
     });
 
@@ -1393,6 +1494,15 @@ function renderTable(rows) {
                 <div>${t.nature ? `<span class="badge ${t.nature==='ARC'?'b-hold':'b-progress'}">${esc(t.nature)}</span>` : `<span class="cell-dim">—</span>`}</div>
             </td>
             <td style="white-space:nowrap;">${statusBadge(t.status)}</td>
+            <td style="min-width:180px;max-width:240px;">
+                <div class="stage-chips">
+                    ${(t.tenderStages||[]).map(sid => {
+                        const s = STAGES.find(x=>x.id===sid);
+                        return s ? `<span class="stage-chip" style="background:${s.color}" title="${esc(s.label)}">${esc(s.label)}</span>` : '';
+                    }).join('')}
+                    <button class="stage-add-btn" onclick="openStagePicker('${t.id}',this)" title="Edit stages">+</button>
+                </div>
+            </td>
             <td style="white-space:nowrap;">
                 <div style="font-size:12px;">${t.allotmentDate ? fmtDate(t.allotmentDate) : `<span class="cell-dim">—</span>`}</div>
                 ${leadHtml}
@@ -1414,6 +1524,91 @@ function renderTable(rows) {
             </td>
         </tr>`;
     }).join('');
+}
+
+// ── STAGE PICKER ──────────────────────────────────────
+let _stagePickerTenderId = null;
+
+function openStagePicker(tenderId, btn) {
+    // If already open for same tender, close it
+    const pop = document.getElementById('stage-popover');
+    if (_stagePickerTenderId === tenderId && pop.style.display !== 'none') {
+        closeStagePicker(); return;
+    }
+    _stagePickerTenderId = tenderId;
+    document.getElementById('stage-search').value = '';
+    renderStageList();
+    pop.style.display = 'flex';
+    // Position below the button
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow >= 300) {
+        pop.style.top  = (rect.bottom + 6 + window.scrollY) + 'px';
+        pop.style.bottom = 'auto';
+    } else {
+        pop.style.top  = 'auto';
+        pop.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    }
+    pop.style.left = Math.min(rect.left, window.innerWidth - 330) + 'px';
+    // Populate stage filter dropdown
+    buildStageFilter();
+}
+
+function renderStageList() {
+    const t = tenders.find(x => x.id === _stagePickerTenderId);
+    const active = new Set(t ? (t.tenderStages || []) : []);
+    const q = document.getElementById('stage-search').value.toLowerCase();
+    const filtered = q ? STAGES.filter(s => s.label.toLowerCase().includes(q)) : STAGES;
+    document.getElementById('stage-list').innerHTML = filtered.map(s => `
+        <label class="stage-popover-item">
+            <input type="checkbox" ${active.has(s.id) ? 'checked' : ''}
+                onchange="toggleStage(${s.id}, this.checked)">
+            <span class="stage-dot" style="background:${s.color}"></span>
+            <span>${esc(s.label)}</span>
+        </label>`).join('');
+}
+
+function filterStageList() { renderStageList(); }
+
+async function toggleStage(stageId, checked) {
+    const t = tenders.find(x => x.id === _stagePickerTenderId);
+    if (!t) return;
+    let stages = [...(t.tenderStages || [])];
+    if (checked) {
+        if (!stages.includes(stageId)) stages.push(stageId);
+    } else {
+        stages = stages.filter(id => id !== stageId);
+    }
+    t.tenderStages = stages;
+    // Save to Firebase
+    try {
+        await fbPatch('tenders/' + t.id, { tenderStages: stages });
+    } catch(e) { toast('⚠ Stage save failed: ' + e.message); }
+    applyFilters(); // re-render table (chips update)
+    // Re-render popover checkboxes to reflect current state
+    renderStageList();
+}
+
+function closeStagePicker() {
+    document.getElementById('stage-popover').style.display = 'none';
+    _stagePickerTenderId = null;
+}
+
+document.addEventListener('click', function(e) {
+    const pop = document.getElementById('stage-popover');
+    if (pop && pop.style.display !== 'none') {
+        if (!pop.contains(e.target) && !e.target.closest('.stage-add-btn')) {
+            closeStagePicker();
+        }
+    }
+});
+
+function buildStageFilter() {
+    const el = document.getElementById('f-stage');
+    const cur = el.value;
+    el.innerHTML = '<option value="">All Stages</option>' +
+        STAGES.map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('');
+    el.value = cur;
 }
 
 // ── MODAL ──────────────────────────────────────────────
@@ -1781,6 +1976,7 @@ function clearFilters() {
     document.getElementById('f-type').value   = '';
     document.getElementById('f-budget').value = '';
     document.getElementById('f-flags').value  = '';
+    document.getElementById('f-stage').value  = '';
     applyFilters();
 }
 
