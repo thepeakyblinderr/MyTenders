@@ -1524,7 +1524,7 @@ function renderKeyDatesBar() {
         const cls = ev.daysLeft === 0 ? 'kd-today' : ev.daysLeft <= 2 ? 'kd-soon' : 'kd-week';
         const when = ev.daysLeft === 0 ? 'TODAY' : ev.daysLeft === 1 ? 'Tomorrow' : `${ev.daysLeft}d · ${fmtDate(ev.date)}`;
         const name = esc(ev.t.nameOfWork.length > 35 ? ev.t.nameOfWork.slice(0, 34) + '…' : ev.t.nameOfWork);
-        return `<span class="kd-pill ${cls}" onclick="openEdit('${ev.t.id}')" title="${esc(ev.t.nameOfWork)}">
+        return `<span class="kd-pill ${cls}" onclick="openCard('${ev.t.id}')" title="${esc(ev.t.nameOfWork)}">
             <span class="kd-dot"></span>
             <span class="kd-type">${ev.label}</span>
             <span>${name} — ${when}</span>
@@ -1679,7 +1679,7 @@ function renderBriefing() {
             }).filter(Boolean).join(', ');
             var actionSub = (t.tenderActions || []).map(function(a) { return a.text; }).join(', ');
             var sub = [stageSub, actionSub].filter(Boolean).join(' · ') || t.department || '';
-            return '<div class="today-strip-row" onclick="openEdit(\'' + t.id + '\')">' +
+            return '<div class="today-strip-row" onclick="openCard(\'' + t.id + '\')">' +
                 '<div style="flex:1;min-width:0;">' +
                     '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.nameOfWork) + '</div>' +
                     (sub ? '<div style="font-size:11px;color:var(--text-sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(sub) + '</div>' : '') +
@@ -1742,7 +1742,7 @@ function renderBriefing() {
             var cls = x.days >= 28 ? 'stuck-crit' : x.days >= 21 ? 'stuck-warn' : 'stuck-ok';
             var dot = x.info.color || 'var(--primary)';
             var sub = esc(x.info.label) + (x.assignedTo ? ' · ' + esc(x.assignedTo) : '');
-            return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
+            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
                 '<div class="bf-row-left">' +
                     '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
@@ -1805,7 +1805,7 @@ function renderBriefing() {
             var dismissBtn = x.missed
                 ? '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>'
                 : '';
-            return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
+            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
                     '<div class="bf-row-title">' + (x.missed ? '<span style="font-size:10px;margin-right:3px;">⚠</span>' : '') + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
@@ -1853,7 +1853,7 @@ function renderBriefing() {
                     : '';
                 return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
                     'border-bottom:1px solid var(--sep);cursor:pointer;transition:background .12s;" ' +
-                    'onclick="openEdit(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
+                    'onclick="openCard(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
                     '<span style="width:7px;height:7px;border-radius:50%;background:' + stageColor + ';flex-shrink:0;"></span>' +
                     '<span style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
                         esc(x.t.nameOfWork) +
@@ -2096,6 +2096,36 @@ function toggleDetailRow(id) {
     if (!panel) return;
     const open = panel.classList.toggle('open');
     if (btn) btn.textContent = open ? '▼' : '▶';
+}
+
+function openCard(tenderId) {
+    // Switch to cards view (renders with current filters)
+    setMainView('cards');
+    function scrollAndExpand() {
+        const detail = document.getElementById('detail-' + tenderId);
+        if (!detail) {
+            // Card is filtered out — clear search + status filter then retry
+            const search = document.getElementById('tbl-search');
+            if (search) search.value = '';
+            const fStatus = document.getElementById('f-status');
+            if (fStatus) fStatus.value = '';
+            applyFilters();
+            requestAnimationFrame(function() {
+                const d2 = document.getElementById('detail-' + tenderId);
+                if (d2) {
+                    const card = d2.closest('.tender-card');
+                    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!d2.classList.contains('open')) toggleDetailRow(tenderId);
+                }
+            });
+            return;
+        }
+        const card = detail.closest('.tender-card');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (!detail.classList.contains('open')) toggleDetailRow(tenderId);
+    }
+    // Give renderTable one frame to finish
+    requestAnimationFrame(scrollAndExpand);
 }
 
 // ── STAGE PICKER ──────────────────────────────────────
