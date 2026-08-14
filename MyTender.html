@@ -288,6 +288,45 @@ input:focus, select:focus, textarea:focus {
 }
 .stage-add-btn:hover { border-color:var(--primary); color:var(--primary); }
 .stage-chip-overdue { outline:2px solid var(--red); outline-offset:1px; }
+.date-add-btn {
+    font-size:12px; line-height:1; padding:1px 7px;
+    border:1px dashed var(--sep); border-radius:10px;
+    background:none; cursor:pointer; color:var(--text-dim); transition:all .15s;
+}
+.date-add-btn:hover { border-color:var(--orange); color:var(--orange); }
+
+/* Date popover */
+.date-popover {
+    position:fixed; z-index:9999;
+    background:#fff; border:1px solid var(--sep);
+    border-radius:12px; box-shadow:var(--shadow-md);
+    width:270px; display:flex; flex-direction:column; overflow:hidden;
+}
+.date-popover-head {
+    padding:10px 13px 8px; border-bottom:1px solid var(--sep);
+    background:#f8f9fa; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); flex-shrink:0;
+}
+.date-popover-list { overflow-y:auto; }
+.date-popover-row {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 13px; border-bottom:1px solid #f1f3f4;
+}
+.date-popover-row:last-child { border-bottom:none; }
+.date-popover-lbl {
+    font-size:12px; color:var(--text-sub); width:82px; flex-shrink:0; font-weight:500;
+}
+.date-popover-input {
+    flex:1; padding:4px 7px; font-size:12px;
+    border:1px solid var(--sep); border-radius:6px;
+    background:#fff; color:var(--text);
+}
+.date-popover-input:focus { border-color:var(--primary); }
+.date-popover-clear {
+    padding:0 5px; background:none; border:none; color:var(--text-dim);
+    cursor:pointer; font-size:14px; flex-shrink:0; line-height:1;
+}
+.date-popover-clear:hover { color:var(--red); }
 
 /* Stage popover */
 .stage-popover {
@@ -1241,6 +1280,12 @@ input:focus, select:focus, textarea:focus {
     </div>
 </div>
 
+<!-- ═══ DATE PICKER POPOVER ═══ -->
+<div id="date-popover" class="date-popover" style="display:none;">
+    <div class="date-popover-head">📅 Key Dates</div>
+    <div class="date-popover-list" id="date-popover-list"></div>
+</div>
+
 <!-- ═══ STAGE PICKER POPOVER ═══ -->
 <div id="stage-popover" class="stage-popover" style="display:none;">
     <div class="stage-popover-search">
@@ -2064,6 +2109,7 @@ function renderTable(rows) {
                         ${stageChipsHtml}
                         ${actionChipsHtml}
                         <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages / actions">+</button>
+                        <button class="date-add-btn" onclick="event.stopPropagation();openDatePicker('${t.id}',this)" title="Edit key dates">📅</button>
                     </div>
                 </div>
                 ${datePillsHtml ? `<div class="card-dates-row">${datePillsHtml}</div>` : ''}
@@ -2230,6 +2276,87 @@ async function updateStageAssignee(stageId, value) {
     } catch(e) { toast('⚠ Save failed'); }
     applyFilters();
 }
+
+// ── DATE PICKER POPOVER ───────────────────────────────
+const DATE_PICKER_FIELDS = [
+    { key: 'saleEndDate',     label: 'Sale End'    },
+    { key: 'preBidDate',      label: 'Pre-Bid'     },
+    { key: 'bidOpeningDate',  label: 'Opening'     },
+    { key: 'raDate',          label: 'RA'          },
+    { key: 'negotiationDate', label: 'Negotiation' },
+    { key: 'tcqEndDate',      label: 'TCQ End'     },
+    { key: 'pboDate',         label: 'PBO'         },
+];
+let _datePickerTenderId = null;
+
+function openDatePicker(tenderId, btn) {
+    const pop = document.getElementById('date-popover');
+    if (_datePickerTenderId === tenderId && pop.style.display !== 'none') {
+        closeDatePicker(); return;
+    }
+    _datePickerTenderId = tenderId;
+    renderDatePickerList();
+    pop.style.display = 'flex';
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    pop.style.top = 'auto'; pop.style.bottom = 'auto';
+    if (spaceBelow >= 280) {
+        pop.style.top = (rect.bottom + 6) + 'px';
+    } else {
+        pop.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    }
+    const leftEdge = Math.min(rect.left, window.innerWidth - 286);
+    pop.style.left = Math.max(4, leftEdge) + 'px';
+}
+
+function renderDatePickerList() {
+    const t = tenders.find(x => x.id === _datePickerTenderId);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    document.getElementById('date-popover-list').innerHTML = DATE_PICKER_FIELDS.map(f => {
+        const val = (t && t[f.key]) || '';
+        const days = val ? Math.round((new Date(val) - new Date(todayStr)) / 86400000) : null;
+        let badge = '';
+        if (days !== null) {
+            const cls = days < 0 ? 'color:#c5221f' : days === 0 ? 'color:#c5221f' : days <= 2 ? 'color:#a05e00' : 'color:var(--primary)';
+            const when = days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'TODAY' : `${days}d`;
+            badge = `<span style="font-size:10px;font-weight:700;${cls};flex-shrink:0;">${when}</span>`;
+        }
+        return `<div class="date-popover-row">
+            <span class="date-popover-lbl">${f.label}</span>
+            <input type="date" class="date-popover-input" value="${esc(val)}"
+                onchange="saveDateField('${f.key}', this.value)"
+                onclick="event.stopPropagation()">
+            ${badge}
+            ${val ? `<button class="date-popover-clear" onclick="saveDateField('${f.key}','')">×</button>` : '<span style="width:20px;flex-shrink:0;"></span>'}
+        </div>`;
+    }).join('');
+}
+
+async function saveDateField(fieldKey, value) {
+    const t = tenders.find(x => x.id === _datePickerTenderId);
+    if (!t) return;
+    t[fieldKey] = value || null;
+    try {
+        await fbPatch('tenders/' + t.id, { [fieldKey]: value || null });
+    } catch(e) { toast('⚠ Save failed'); }
+    renderDatePickerList();
+    applyFilters();
+    if (_mainView === 'briefing') renderBriefing();
+}
+
+function closeDatePicker() {
+    document.getElementById('date-popover').style.display = 'none';
+    _datePickerTenderId = null;
+}
+
+document.addEventListener('click', function(e) {
+    const pop = document.getElementById('date-popover');
+    if (pop && pop.style.display !== 'none') {
+        if (!pop.contains(e.target) && !e.target.closest('.date-add-btn')) {
+            closeDatePicker();
+        }
+    }
+});
 
 // ── FLAG FOR TODAY ────────────────────────────────────
 async function toggleFlag(tenderId) {
