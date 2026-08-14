@@ -635,6 +635,41 @@ input:focus, select:focus, textarea:focus {
 .stuck-ok    { background:rgba(52,199,89,.15);  color:#1a7a35; }
 .stuck-warn  { background:rgba(255,149,0,.15);  color:#a05e00; }
 .stuck-crit  { background:rgba(255,59,48,.12);  color:#c5221f; }
+
+/* Flag-for-today */
+.card-flag-btn {
+    padding:3px 7px; border:none; background:transparent;
+    font-size:14px; cursor:pointer; border-radius:6px;
+    transition:background .12s; line-height:1; flex-shrink:0;
+    opacity:0.4;
+}
+.card-flag-btn:hover { background:rgba(255,149,0,.15); opacity:1; }
+.card-flag-btn.flagged { opacity:1; }
+.tender-card.today-flagged {
+    border-left:3px solid var(--orange);
+}
+
+/* Today's Actions strip */
+.today-strip {
+    background:var(--card); border-radius:var(--radius);
+    border:1px solid var(--sep); border-left:3px solid var(--orange);
+    box-shadow:var(--shadow-sm); margin-bottom:14px; overflow:hidden;
+}
+.today-strip-head {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px; border-bottom:1px solid var(--sep);
+    background:rgba(255,149,0,.06);
+}
+.today-strip-title { font-size:13px; font-weight:700; color:var(--text); flex:1; }
+.today-strip-count { font-size:12px; color:var(--text-sub); }
+.today-strip-rows { }
+.today-strip-row {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 14px; border-bottom:1px solid var(--sep);
+    cursor:pointer; transition:background .12s;
+}
+.today-strip-row:last-child { border-bottom:none; }
+.today-strip-row:hover { background:var(--bg); }
 .date-today  { background:rgba(255,59,48,.12);  color:#c5221f; }
 .date-soon   { background:rgba(255,149,0,.12);  color:#a05e00; }
 .date-week   { background:var(--primary-dim);   color:var(--primary); }
@@ -877,6 +912,14 @@ input:focus, select:focus, textarea:focus {
 
         <!-- ── BRIEFING PANEL (default) ── -->
         <div id="briefing-panel">
+            <!-- Today's Actions strip -->
+            <div class="today-strip" id="today-strip" style="display:none;">
+                <div class="today-strip-head">
+                    <span class="today-strip-title">🚩 Today's Actions</span>
+                    <span class="today-strip-count" id="today-strip-count"></span>
+                </div>
+                <div class="today-strip-rows" id="today-strip-rows"></div>
+            </div>
             <div class="bf-grid">
                 <div class="bf-card">
                     <div class="bf-head">
@@ -1623,6 +1666,29 @@ function renderBriefing() {
     var todayStr = new Date().toISOString().slice(0, 10);
     var in7Str   = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
+    // ── 0. Today's Actions strip ─────────────────────────
+    var flagged = tenders.filter(function(t) { return t.flaggedDate === todayStr; });
+    var strip = document.getElementById('today-strip');
+    strip.style.display = flagged.length ? '' : 'none';
+    if (flagged.length) {
+        document.getElementById('today-strip-count').textContent = flagged.length + (flagged.length === 1 ? ' tender' : ' tenders');
+        document.getElementById('today-strip-rows').innerHTML = flagged.map(function(t) {
+            var stageSub = normalizeStages(t.tenderStages || []).map(function(st) {
+                var info = STAGES.find(function(x) { return x.id === st.id; });
+                return info ? info.label : '';
+            }).filter(Boolean).join(', ');
+            var actionSub = (t.tenderActions || []).map(function(a) { return a.text; }).join(', ');
+            var sub = [stageSub, actionSub].filter(Boolean).join(' · ') || t.department || '';
+            return '<div class="today-strip-row" onclick="openEdit(\'' + t.id + '\')">' +
+                '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.nameOfWork) + '</div>' +
+                    (sub ? '<div style="font-size:11px;color:var(--text-sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(sub) + '</div>' : '') +
+                '</div>' +
+                '<button style="padding:3px 9px;border:1px solid rgba(255,149,0,.4);border-radius:6px;background:transparent;color:#a05e00;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:inherit;" onclick="event.stopPropagation();toggleFlag(\'' + t.id + '\')" title="Remove flag">✓ Done</button>' +
+            '</div>';
+        }).join('');
+    }
+
     // ── 1. Stage Congestion ──────────────────────────────
     var stageMap = {};
     STAGES.forEach(function(s) { stageMap[s.id] = []; });
@@ -1978,7 +2044,8 @@ function renderTable(rows) {
             return `<span class="badge ${cls}" style="font-size:11px;">${lbl}: ${when}</span>`;
         }).join('');
 
-        return `<div class="tender-card">
+        const isFlaggedToday = t.flaggedDate === todayStr;
+        return `<div class="tender-card${isFlaggedToday ? ' today-flagged' : ''}">
             <div class="card-header" onclick="toggleDetailRow('${t.id}')">
                 <div class="card-top-row">
                     <div class="card-title-wrap">
@@ -1987,6 +2054,7 @@ function renderTable(rows) {
                     </div>
                     <div class="card-right">
                         ${statusBadge(t.status)}
+                        <button class="card-flag-btn${isFlaggedToday ? ' flagged' : ''}" title="${isFlaggedToday ? 'Remove today flag' : 'Flag for today'}" onclick="event.stopPropagation();toggleFlag('${t.id}')">🚩</button>
                         <button class="card-expand-btn" id="expand-${t.id}">▶</button>
                     </div>
                 </div>
@@ -2131,6 +2199,20 @@ async function updateStageAssignee(stageId, value) {
         await fbPatch('tenders/' + t.id, { tenderStages: stages });
     } catch(e) { toast('⚠ Save failed'); }
     applyFilters();
+}
+
+// ── FLAG FOR TODAY ────────────────────────────────────
+async function toggleFlag(tenderId) {
+    const t = tenders.find(x => x.id === tenderId);
+    if (!t) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const newVal = t.flaggedDate === todayStr ? null : todayStr;
+    t.flaggedDate = newVal;
+    try {
+        await fbPatch('tenders/' + tenderId, { flaggedDate: newVal });
+    } catch(e) { toast('⚠ Save failed'); }
+    applyFilters();
+    if (_mainView === 'briefing') renderBriefing();
 }
 
 function closeStagePicker() {
@@ -2567,6 +2649,7 @@ async function saveTender() {
                     id: editId,
                     tenderStages:  existing.tenderStages  || [],
                     tenderActions: existing.tenderActions || [],
+                    flaggedDate:   existing.flaggedDate   || null,
                 };
             }
             toast('Tender updated ✓');
