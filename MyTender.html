@@ -794,40 +794,52 @@ input:focus, select:focus, textarea:focus {
 
     /* Briefing: single column */
     .bf-grid { grid-template-columns:1fr; }
-    .bf-body, #bf-stuck, #bf-workload { max-height:320px; }
+    .bf-body, #bf-stuck, #bf-workload { max-height:280px; }
+    .bf-head { padding:11px 14px 9px; }
+    .bf-row { padding:9px 14px; gap:8px; }
 
-    /* Cards */
-    .card-header { padding:14px 14px 10px; }
-    .card-detail { padding:14px; }
-    .card-footer { padding:9px 14px; }
-    .card-detail-grid { grid-template-columns:1fr 1fr; }
+    /* Cards — compact, prevent horizontal overflow */
+    .tender-card { margin-bottom:8px; }
+    .card-header { padding:12px 14px 8px; }
+    .card-title { font-size:13px; }
+    .card-refs { display:none; }          /* tender no already in title */
+    .card-meta { font-size:10px; margin-top:3px; margin-bottom:7px; }
+    .card-stages-row { gap:4px; }
+    .stage-chip {
+        font-size:10px; padding:2px 8px 2px 6px;
+        max-width:calc(50vw - 30px); overflow:hidden; text-overflow:ellipsis;
+    }
+    .card-detail { padding:12px 14px; }
+    .card-detail-grid { grid-template-columns:1fr 1fr; gap:10px 14px; }
+    .card-footer { padding:8px 14px; }
+
+    /* Stop page-level horizontal scroll */
+    .main-content { overflow-x:hidden; }
+    .card-stages-row, .card-dates-row { overflow-x:hidden; }
 
     /* Modal: bottom sheet */
-    .backdrop {
-        padding:0; align-items:flex-end;
-    }
+    .backdrop { padding:0; align-items:flex-end; }
     .modal {
         border-radius:var(--radius) var(--radius) 0 0;
         max-height:93vh; max-width:100%;
     }
-    .modal-head { padding:18px 18px 0; }
-    .modal-body { padding:14px 18px; }
-    .modal-foot { padding:12px 18px; }
+    .modal-head { padding:16px 16px 0; }
+    .modal-body { padding:12px 16px; }
+    .modal-foot { padding:10px 16px; }
 
     /* Form: single column */
     .form-grid { grid-template-columns:1fr; }
-    .wo-row { grid-template-columns:1fr 100px 32px; }
-    .wo-row .field:nth-child(3) { display:none; } /* hide amount on mobile */
+    .wo-row { grid-template-columns:1fr 90px 32px; }
 
-    /* Key dates bar: wrap tighter */
+    /* Key dates bar */
     #key-dates-bar { padding:10px 14px; }
 
-    /* Stage popover: full-width */
+    /* Popovers: full width */
     .stage-popover, .date-popover {
         width:calc(100vw - 28px); left:14px !important;
     }
 
-    /* Smaller sb-stat numbers on briefing */
+    /* Sidebar stats */
     .sb-stat-num { font-size:18px; }
 }
     </style>
