@@ -219,8 +219,9 @@ input:focus, select:focus, textarea:focus {
 .card-title { font-size:14px; font-weight:700; color:var(--text); line-height:1.35; letter-spacing:-.1px; }
 .card-refs { font-size:11px; color:var(--text-dim); margin-top:3px; font-weight:500; }
 .card-num { font-weight:700; color:var(--text-sub); margin-right:3px; }
-.card-meta { font-size:11px; color:var(--text-sub); font-weight:500; margin-top:4px; margin-bottom:10px; }
+.card-meta { display:none; }
 .card-right { display:flex; align-items:center; gap:6px; flex-shrink:0; padding-top:2px; }
+.card-right .badge { display:none; }
 .card-stages-row { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
 .card-dates-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 
@@ -802,8 +803,7 @@ input:focus, select:focus, textarea:focus {
     .tender-card { margin-bottom:8px; }
     .card-header { padding:12px 14px 8px; }
     .card-title { font-size:13px; }
-    .card-refs { display:none; }          /* tender no already in title */
-    .card-meta { font-size:10px; margin-top:3px; margin-bottom:7px; }
+    .card-refs { display:none; }
     .card-stages-row { gap:4px; }
     .stage-chip {
         font-size:10px; padding:2px 8px 2px 6px;
