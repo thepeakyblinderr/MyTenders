@@ -843,9 +843,6 @@ input:focus, select:focus, textarea:focus {
     <!-- ── MAIN CONTENT ── -->
     <main class="main-content">
 
-        <!-- Key Dates Bar -->
-        <div id="key-dates-bar" style="display:none;"></div>
-
         <!-- Main topbar: view toggle + quick filters -->
         <div class="main-topbar">
             <div class="view-toggle">
@@ -1426,7 +1423,7 @@ function stageDays(enteredAt) {
     return Math.floor((Date.now() - enteredAt) / 86400000);
 }
 
-const OVERDUE_DAYS = 14;
+const OVERDUE_DAYS = 4;
 
 // ── KEY DATES ──────────────────────────────────────────
 const KEY_DATE_FIELDS = [
@@ -1563,7 +1560,6 @@ function applyFilters() {
     filteredRows = rows;
     updateDashboard(statsRows);
     renderTable(rows);
-    renderKeyDatesBar();
     syncTopbarFromSidebar();
     if (_mainView === 'briefing') renderBriefing();
 }
