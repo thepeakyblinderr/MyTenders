@@ -1093,12 +1093,24 @@ input:focus, select:focus, textarea:focus {
                     <input type="date" id="m-prebid">
                 </div>
                 <div class="field">
-                    <label>Bid Submission / Opening Date</label>
+                    <label>Bid Opening Date</label>
                     <input type="date" id="m-bid-open">
                 </div>
                 <div class="field">
                     <label>RA (Reverse Auction) Date</label>
                     <input type="date" id="m-ra-date">
+                </div>
+                <div class="field">
+                    <label>Negotiation Date</label>
+                    <input type="date" id="m-negotiation-date">
+                </div>
+                <div class="field">
+                    <label>TCQ End Date</label>
+                    <input type="date" id="m-tcq-end-date">
+                </div>
+                <div class="field">
+                    <label>PBO Date</label>
+                    <input type="date" id="m-pbo-date">
                 </div>
 
                 <div class="sec-label">Work Order</div>
@@ -1427,10 +1439,13 @@ const OVERDUE_DAYS = 4;
 
 // ── KEY DATES ──────────────────────────────────────────
 const KEY_DATE_FIELDS = [
-    { key: 'saleEndDate',   label: 'Sale End'     },
-    { key: 'preBidDate',    label: 'Pre-Bid'      },
-    { key: 'bidOpeningDate',label: 'Bid Opening'  },
-    { key: 'raDate',        label: 'RA'           },
+    { key: 'saleEndDate',       label: 'Sale End'    },
+    { key: 'preBidDate',        label: 'Pre-Bid'     },
+    { key: 'bidOpeningDate',    label: 'Opening'     },
+    { key: 'raDate',            label: 'RA'          },
+    { key: 'negotiationDate',   label: 'Negotiation' },
+    { key: 'tcqEndDate',        label: 'TCQ End'     },
+    { key: 'pboDate',           label: 'PBO'         },
 ];
 
 function renderKeyDatesBar() {
@@ -1658,10 +1673,13 @@ function renderBriefing() {
 
     // ── 3. Upcoming Key Dates (next 7 days) ─────────────
     var DATE_FIELDS = [
-        { key: 'saleEndDate',    label: 'Sale End'     },
-        { key: 'preBidDate',     label: 'Pre-Bid'      },
-        { key: 'bidOpeningDate', label: 'Bid Opening'  },
-        { key: 'raDate',         label: 'RA'           },
+        { key: 'saleEndDate',     label: 'Sale End'    },
+        { key: 'preBidDate',      label: 'Pre-Bid'     },
+        { key: 'bidOpeningDate',  label: 'Opening'     },
+        { key: 'raDate',          label: 'RA'          },
+        { key: 'negotiationDate', label: 'Negotiation' },
+        { key: 'tcqEndDate',      label: 'TCQ End'     },
+        { key: 'pboDate',         label: 'PBO'         },
     ];
     var upcoming = [];
     tenders.forEach(function(t) {
@@ -1870,7 +1888,7 @@ function renderTable(rows) {
         }).join('');
 
         // Key date pills (show only upcoming / today)
-        const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
+        const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Opening'],['raDate','RA'],['negotiationDate','Negotiation'],['tcqEndDate','TCQ End'],['pboDate','PBO']].map(([k, lbl]) => {
             if (!t[k]) return '';
             const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
             if (d < -1) return '';
@@ -1910,7 +1928,7 @@ function renderTable(rows) {
         ].join('') || '—';
 
         // Key dates for detail panel (all, not just upcoming)
-        const keyDatesHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
+        const keyDatesHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Opening'],['raDate','RA'],['negotiationDate','Negotiation'],['tcqEndDate','TCQ End'],['pboDate','PBO']].map(([k, lbl]) => {
             if (!t[k]) return '';
             const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
             const cls = d < 0 ? 'b-cancelled' : d === 0 ? 'b-hold' : d <= 2 ? 'b-hold' : 'b-progress';
@@ -2233,10 +2251,13 @@ function openEdit(id) {
     set('m-val-excl',     t.valueExclGST ?? '');
     set('m-landed',       t.finalLandedCost ?? '');
     set('m-remarks',      t.remarks);
-    set('m-sale-end',     t.saleEndDate    ?? '');
-    set('m-prebid',       t.preBidDate     ?? '');
-    set('m-bid-open',     t.bidOpeningDate ?? '');
-    set('m-ra-date',      t.raDate         ?? '');
+    set('m-sale-end',          t.saleEndDate      ?? '');
+    set('m-prebid',            t.preBidDate       ?? '');
+    set('m-bid-open',          t.bidOpeningDate   ?? '');
+    set('m-ra-date',           t.raDate           ?? '');
+    set('m-negotiation-date',  t.negotiationDate  ?? '');
+    set('m-tcq-end-date',      t.tcqEndDate       ?? '');
+    set('m-pbo-date',          t.pboDate          ?? '');
     // Populate WO fields based on split type
     document.getElementById('wo-list').innerHTML = '';
     if (t.tenderSplit === 'Yes') {
@@ -2480,10 +2501,13 @@ async function saveTender() {
         valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
         finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
         remarks:         get('m-remarks'),
-        saleEndDate:     get('m-sale-end')   || null,
-        preBidDate:      get('m-prebid')     || null,
-        bidOpeningDate:  get('m-bid-open')   || null,
-        raDate:          get('m-ra-date')    || null,
+        saleEndDate:      get('m-sale-end')          || null,
+        preBidDate:       get('m-prebid')            || null,
+        bidOpeningDate:   get('m-bid-open')          || null,
+        raDate:           get('m-ra-date')           || null,
+        negotiationDate:  get('m-negotiation-date')  || null,
+        tcqEndDate:       get('m-tcq-end-date')      || null,
+        pboDate:          get('m-pbo-date')           || null,
     };
 
     const btn = document.getElementById('save-btn');
