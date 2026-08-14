@@ -288,6 +288,45 @@ input:focus, select:focus, textarea:focus {
 }
 .stage-add-btn:hover { border-color:var(--primary); color:var(--primary); }
 .stage-chip-overdue { outline:2px solid var(--red); outline-offset:1px; }
+.date-add-btn {
+    font-size:12px; line-height:1; padding:1px 7px;
+    border:1px dashed var(--sep); border-radius:10px;
+    background:none; cursor:pointer; color:var(--text-dim); transition:all .15s;
+}
+.date-add-btn:hover { border-color:var(--orange); color:var(--orange); }
+
+/* Date popover */
+.date-popover {
+    position:fixed; z-index:9999;
+    background:#fff; border:1px solid var(--sep);
+    border-radius:12px; box-shadow:var(--shadow-md);
+    width:270px; display:flex; flex-direction:column; overflow:hidden;
+}
+.date-popover-head {
+    padding:10px 13px 8px; border-bottom:1px solid var(--sep);
+    background:#f8f9fa; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); flex-shrink:0;
+}
+.date-popover-list { overflow-y:auto; }
+.date-popover-row {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 13px; border-bottom:1px solid #f1f3f4;
+}
+.date-popover-row:last-child { border-bottom:none; }
+.date-popover-lbl {
+    font-size:12px; color:var(--text-sub); width:82px; flex-shrink:0; font-weight:500;
+}
+.date-popover-input {
+    flex:1; padding:4px 7px; font-size:12px;
+    border:1px solid var(--sep); border-radius:6px;
+    background:#fff; color:var(--text);
+}
+.date-popover-input:focus { border-color:var(--primary); }
+.date-popover-clear {
+    padding:0 5px; background:none; border:none; color:var(--text-dim);
+    cursor:pointer; font-size:14px; flex-shrink:0; line-height:1;
+}
+.date-popover-clear:hover { color:var(--red); }
 
 /* Stage popover */
 .stage-popover {
@@ -611,7 +650,8 @@ input:focus, select:focus, textarea:focus {
     font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;
     background:var(--bg); color:var(--text-sub);
 }
-.bf-body { max-height:240px; overflow-y:auto; }
+.bf-body { max-height:420px; overflow-y:auto; }
+#bf-stuck, #bf-workload { max-height:260px; }
 .bf-row {
     display:flex; align-items:center; gap:10px; padding:10px 14px;
     border-bottom:1px solid var(--sep); cursor:pointer; transition:background .12s;
@@ -634,9 +674,51 @@ input:focus, select:focus, textarea:focus {
 .stuck-ok    { background:rgba(52,199,89,.15);  color:#1a7a35; }
 .stuck-warn  { background:rgba(255,149,0,.15);  color:#a05e00; }
 .stuck-crit  { background:rgba(255,59,48,.12);  color:#c5221f; }
+
+/* Flag-for-today */
+.card-flag-btn {
+    padding:3px 7px; border:none; background:transparent;
+    font-size:14px; cursor:pointer; border-radius:6px;
+    transition:background .12s; line-height:1; flex-shrink:0;
+    opacity:0.4;
+}
+.card-flag-btn:hover { background:rgba(255,149,0,.15); opacity:1; }
+.card-flag-btn.flagged { opacity:1; }
+.tender-card.today-flagged {
+    border-left:3px solid var(--orange);
+}
+
+/* Today's Actions strip */
+.today-strip {
+    background:var(--card); border-radius:var(--radius);
+    border:1px solid var(--sep); border-left:3px solid var(--orange);
+    box-shadow:var(--shadow-sm); margin-bottom:14px; overflow:hidden;
+}
+.today-strip-head {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px; border-bottom:1px solid var(--sep);
+    background:rgba(255,149,0,.06);
+}
+.today-strip-title { font-size:13px; font-weight:700; color:var(--text); flex:1; }
+.today-strip-count { font-size:12px; color:var(--text-sub); }
+.today-strip-rows { }
+.today-strip-row {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 14px; border-bottom:1px solid var(--sep);
+    cursor:pointer; transition:background .12s;
+}
+.today-strip-row:last-child { border-bottom:none; }
+.today-strip-row:hover { background:var(--bg); }
 .date-today  { background:rgba(255,59,48,.12);  color:#c5221f; }
 .date-soon   { background:rgba(255,149,0,.12);  color:#a05e00; }
 .date-week   { background:var(--primary-dim);   color:var(--primary); }
+.bf-dismiss-btn {
+    flex-shrink:0; padding:2px 8px; border:1px solid rgba(52,199,89,.4);
+    border-radius:6px; background:rgba(52,199,89,.10); color:#1a7a35;
+    font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;
+    transition:background .12s;
+}
+.bf-dismiss-btn:hover { background:rgba(52,199,89,.25); }
     </style>
 </head>
 <body>
@@ -869,7 +951,22 @@ input:focus, select:focus, textarea:focus {
 
         <!-- ── BRIEFING PANEL (default) ── -->
         <div id="briefing-panel">
+            <!-- Today's Actions strip -->
+            <div class="today-strip" id="today-strip" style="display:none;">
+                <div class="today-strip-head">
+                    <span class="today-strip-title">🚩 Today's Actions</span>
+                    <span class="today-strip-count" id="today-strip-count"></span>
+                </div>
+                <div class="today-strip-rows" id="today-strip-rows"></div>
+            </div>
             <div class="bf-grid">
+                <div class="bf-card">
+                    <div class="bf-head">
+                        <span class="bf-head-title">📅 Key Dates</span>
+                        <span class="bf-head-count" id="bf-dates-count"></span>
+                    </div>
+                    <div class="bf-body" id="bf-dates"></div>
+                </div>
                 <div class="bf-card">
                     <div class="bf-head">
                         <span class="bf-head-title">🗂 Stage Congestion</span>
@@ -883,13 +980,6 @@ input:focus, select:focus, textarea:focus {
                         <span class="bf-head-count" id="bf-stuck-count"></span>
                     </div>
                     <div class="bf-body" id="bf-stuck"></div>
-                </div>
-                <div class="bf-card">
-                    <div class="bf-head">
-                        <span class="bf-head-title">📅 Upcoming (7 days)</span>
-                        <span class="bf-head-count" id="bf-dates-count"></span>
-                    </div>
-                    <div class="bf-body" id="bf-dates"></div>
                 </div>
                 <div class="bf-card">
                     <div class="bf-head">
@@ -1093,12 +1183,24 @@ input:focus, select:focus, textarea:focus {
                     <input type="date" id="m-prebid">
                 </div>
                 <div class="field">
-                    <label>Bid Submission / Opening Date</label>
+                    <label>Bid Opening Date</label>
                     <input type="date" id="m-bid-open">
                 </div>
                 <div class="field">
                     <label>RA (Reverse Auction) Date</label>
                     <input type="date" id="m-ra-date">
+                </div>
+                <div class="field">
+                    <label>Negotiation Date</label>
+                    <input type="date" id="m-negotiation-date">
+                </div>
+                <div class="field">
+                    <label>TCQ End Date</label>
+                    <input type="date" id="m-tcq-end-date">
+                </div>
+                <div class="field">
+                    <label>PBO Date</label>
+                    <input type="date" id="m-pbo-date">
                 </div>
 
                 <div class="sec-label">Work Order</div>
@@ -1176,6 +1278,12 @@ input:focus, select:focus, textarea:focus {
             <button class="btn btn-danger" id="dedup-del-btn" onclick="execDedup()" style="display:none;">Delete Selected Duplicates</button>
         </div>
     </div>
+</div>
+
+<!-- ═══ DATE PICKER POPOVER ═══ -->
+<div id="date-popover" class="date-popover" style="display:none;">
+    <div class="date-popover-head">📅 Key Dates</div>
+    <div class="date-popover-list" id="date-popover-list"></div>
 </div>
 
 <!-- ═══ STAGE PICKER POPOVER ═══ -->
@@ -1427,10 +1535,13 @@ const OVERDUE_DAYS = 4;
 
 // ── KEY DATES ──────────────────────────────────────────
 const KEY_DATE_FIELDS = [
-    { key: 'saleEndDate',   label: 'Sale End'     },
-    { key: 'preBidDate',    label: 'Pre-Bid'      },
-    { key: 'bidOpeningDate',label: 'Bid Opening'  },
-    { key: 'raDate',        label: 'RA'           },
+    { key: 'saleEndDate',       label: 'Sale End'    },
+    { key: 'preBidDate',        label: 'Pre-Bid'     },
+    { key: 'bidOpeningDate',    label: 'Opening'     },
+    { key: 'raDate',            label: 'RA'          },
+    { key: 'negotiationDate',   label: 'Negotiation' },
+    { key: 'tcqEndDate',        label: 'TCQ End'     },
+    { key: 'pboDate',           label: 'PBO'         },
 ];
 
 function renderKeyDatesBar() {
@@ -1458,7 +1569,7 @@ function renderKeyDatesBar() {
         const cls = ev.daysLeft === 0 ? 'kd-today' : ev.daysLeft <= 2 ? 'kd-soon' : 'kd-week';
         const when = ev.daysLeft === 0 ? 'TODAY' : ev.daysLeft === 1 ? 'Tomorrow' : `${ev.daysLeft}d · ${fmtDate(ev.date)}`;
         const name = esc(ev.t.nameOfWork.length > 35 ? ev.t.nameOfWork.slice(0, 34) + '…' : ev.t.nameOfWork);
-        return `<span class="kd-pill ${cls}" onclick="openEdit('${ev.t.id}')" title="${esc(ev.t.nameOfWork)}">
+        return `<span class="kd-pill ${cls}" onclick="openCard('${ev.t.id}')" title="${esc(ev.t.nameOfWork)}">
             <span class="kd-dot"></span>
             <span class="kd-type">${ev.label}</span>
             <span>${name} — ${when}</span>
@@ -1588,9 +1699,40 @@ function setMainView(v) {
     }
 }
 
+// ── DATE DISMISSAL (localStorage) ─────────────────────
+function _dismissKey(tid, fkey, date) { return 'dd_' + tid + '_' + fkey + '_' + date; }
+function dismissedDateKey(tid, fkey, date) { return !!localStorage.getItem(_dismissKey(tid, fkey, date)); }
+function dismissDate(tid, fkey, date) {
+    localStorage.setItem(_dismissKey(tid, fkey, date), '1');
+    renderBriefing();
+}
+
 function renderBriefing() {
     var todayStr = new Date().toISOString().slice(0, 10);
     var in7Str   = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+    // ── 0. Today's Actions strip ─────────────────────────
+    var flagged = tenders.filter(function(t) { return t.flaggedDate === todayStr; });
+    var strip = document.getElementById('today-strip');
+    strip.style.display = flagged.length ? '' : 'none';
+    if (flagged.length) {
+        document.getElementById('today-strip-count').textContent = flagged.length + (flagged.length === 1 ? ' tender' : ' tenders');
+        document.getElementById('today-strip-rows').innerHTML = flagged.map(function(t) {
+            var stageSub = normalizeStages(t.tenderStages || []).map(function(st) {
+                var info = STAGES.find(function(x) { return x.id === st.id; });
+                return info ? info.label : '';
+            }).filter(Boolean).join(', ');
+            var actionSub = (t.tenderActions || []).map(function(a) { return a.text; }).join(', ');
+            var sub = [stageSub, actionSub].filter(Boolean).join(' · ') || t.department || '';
+            return '<div class="today-strip-row" onclick="openCard(\'' + t.id + '\')">' +
+                '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.nameOfWork) + '</div>' +
+                    (sub ? '<div style="font-size:11px;color:var(--text-sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(sub) + '</div>' : '') +
+                '</div>' +
+                '<button style="padding:3px 9px;border:1px solid rgba(255,149,0,.4);border-radius:6px;background:transparent;color:#a05e00;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:inherit;" onclick="event.stopPropagation();toggleFlag(\'' + t.id + '\')" title="Remove flag">✓ Done</button>' +
+            '</div>';
+        }).join('');
+    }
 
     // ── 1. Stage Congestion ──────────────────────────────
     var stageMap = {};
@@ -1645,7 +1787,7 @@ function renderBriefing() {
             var cls = x.days >= 28 ? 'stuck-crit' : x.days >= 21 ? 'stuck-warn' : 'stuck-ok';
             var dot = x.info.color || 'var(--primary)';
             var sub = esc(x.info.label) + (x.assignedTo ? ' · ' + esc(x.assignedTo) : '');
-            return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
+            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
                 '<div class="bf-row-left">' +
                     '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
@@ -1656,39 +1798,68 @@ function renderBriefing() {
         }).join('')
         : '<div class="bf-empty">✅ Nothing stuck &gt;' + OVERDUE_DAYS + ' days</div>';
 
-    // ── 3. Upcoming Key Dates (next 7 days) ─────────────
+    // ── 3. Key Dates (missed last 7d + upcoming 7d) ──────
     var DATE_FIELDS = [
-        { key: 'saleEndDate',    label: 'Sale End'     },
-        { key: 'preBidDate',     label: 'Pre-Bid'      },
-        { key: 'bidOpeningDate', label: 'Bid Opening'  },
-        { key: 'raDate',         label: 'RA'           },
+        { key: 'saleEndDate',     label: 'Sale End'    },
+        { key: 'preBidDate',      label: 'Pre-Bid'     },
+        { key: 'bidOpeningDate',  label: 'Opening'     },
+        { key: 'raDate',          label: 'RA'          },
+        { key: 'negotiationDate', label: 'Negotiation' },
+        { key: 'tcqEndDate',      label: 'TCQ End'     },
+        { key: 'pboDate',         label: 'PBO'         },
     ];
-    var upcoming = [];
+    var past7Str = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+    var keyDateItems = [];
     tenders.forEach(function(t) {
         if (t.status === 'Awarded' || t.status === 'Cancelled') return;
         DATE_FIELDS.forEach(function(f) {
             var d = t[f.key];
-            if (!d || d < todayStr || d > in7Str) return;
+            if (!d || d < past7Str || d > in7Str) return;
             var dl = Math.round((new Date(d) - new Date(todayStr)) / 86400000);
-            upcoming.push({ t: t, label: f.label, date: d, dl: dl });
+            var missed = dl < 0;
+            if (missed && dismissedDateKey(t.id, f.key, d)) return; // skip acknowledged
+            keyDateItems.push({ t: t, label: f.label, date: d, dl: dl, missed: missed, fkey: f.key });
         });
     });
-    upcoming.sort(function(a, b) { return a.dl - b.dl; });
+    // Sort: missed first (most recent first), then upcoming (soonest first)
+    keyDateItems.sort(function(a, b) {
+        if (a.missed && !b.missed) return -1;
+        if (!a.missed && b.missed) return 1;
+        return a.dl - b.dl;
+    });
 
-    document.getElementById('bf-dates-count').textContent = upcoming.length + (upcoming.length === 1 ? ' event' : ' events');
-    document.getElementById('bf-dates').innerHTML = upcoming.length
-        ? upcoming.map(function(x) {
-            var cls  = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
-            var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
-            return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
+    var missedCount = keyDateItems.filter(function(x) { return x.missed; }).length;
+    var upcomingCount = keyDateItems.length - missedCount;
+    var countParts = [];
+    if (missedCount) countParts.push(missedCount + ' missed');
+    if (upcomingCount) countParts.push(upcomingCount + ' upcoming');
+    document.getElementById('bf-dates-count').textContent = countParts.join(', ') || '0 events';
+    document.getElementById('bf-dates').innerHTML = keyDateItems.length
+        ? keyDateItems.map(function(x) {
+            var cls, when;
+            if (x.dl < 0) {
+                cls = 'date-today';
+                when = Math.abs(x.dl) + 'd ago';
+            } else if (x.dl === 0) {
+                cls = 'date-today'; when = 'TODAY';
+            } else if (x.dl <= 2) {
+                cls = 'date-soon'; when = x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+            } else {
+                cls = 'date-week'; when = 'in ' + x.dl + 'd';
+            }
+            var dismissBtn = x.missed
+                ? '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>'
+                : '';
+            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + (x.missed ? '<span style="font-size:10px;margin-right:3px;">⚠</span>' : '') + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge ' + cls + '">' + when + '</span>' +
+                dismissBtn +
                 '</div>';
         }).join('')
-        : '<div class="bf-empty">✅ No dates in next 7 days</div>';
+        : '<div class="bf-empty">✅ No key dates in ±7 days</div>';
 
     // ── 4. Workload ──────────────────────────────────────
     var wlMap = {};
@@ -1727,7 +1898,7 @@ function renderBriefing() {
                     : '';
                 return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
                     'border-bottom:1px solid var(--sep);cursor:pointer;transition:background .12s;" ' +
-                    'onclick="openEdit(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
+                    'onclick="openCard(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
                     '<span style="width:7px;height:7px;border-radius:50%;background:' + stageColor + ';flex-shrink:0;"></span>' +
                     '<span style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
                         esc(x.t.nameOfWork) +
@@ -1870,12 +2041,12 @@ function renderTable(rows) {
         }).join('');
 
         // Key date pills (show only upcoming / today)
-        const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
+        const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Opening'],['raDate','RA'],['negotiationDate','Negotiation'],['tcqEndDate','TCQ End'],['pboDate','PBO']].map(([k, lbl]) => {
             if (!t[k]) return '';
             const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
-            if (d < -1) return '';
-            const cls = d <= 0 ? 'kd-today' : d <= 2 ? 'kd-soon' : 'kd-week';
-            const when = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d`;
+            if (d < -7) return ''; // only show up to 7 days past
+            const cls = d < 0 ? 'kd-today' : d === 0 ? 'kd-today' : d <= 2 ? 'kd-soon' : 'kd-week';
+            const when = d < 0 ? `⚠ ${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d`;
             return `<span class="kd-pill ${cls}" style="cursor:default;font-size:11px;padding:2px 8px 2px 6px;"><span class="kd-dot"></span><span class="kd-type">${lbl}</span>: ${when}</span>`;
         }).join('');
 
@@ -1910,7 +2081,7 @@ function renderTable(rows) {
         ].join('') || '—';
 
         // Key dates for detail panel (all, not just upcoming)
-        const keyDatesHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
+        const keyDatesHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Opening'],['raDate','RA'],['negotiationDate','Negotiation'],['tcqEndDate','TCQ End'],['pboDate','PBO']].map(([k, lbl]) => {
             if (!t[k]) return '';
             const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
             const cls = d < 0 ? 'b-cancelled' : d === 0 ? 'b-hold' : d <= 2 ? 'b-hold' : 'b-progress';
@@ -1918,7 +2089,8 @@ function renderTable(rows) {
             return `<span class="badge ${cls}" style="font-size:11px;">${lbl}: ${when}</span>`;
         }).join('');
 
-        return `<div class="tender-card">
+        const isFlaggedToday = t.flaggedDate === todayStr;
+        return `<div class="tender-card${isFlaggedToday ? ' today-flagged' : ''}">
             <div class="card-header" onclick="toggleDetailRow('${t.id}')">
                 <div class="card-top-row">
                     <div class="card-title-wrap">
@@ -1927,6 +2099,7 @@ function renderTable(rows) {
                     </div>
                     <div class="card-right">
                         ${statusBadge(t.status)}
+                        <button class="card-flag-btn${isFlaggedToday ? ' flagged' : ''}" title="${isFlaggedToday ? 'Remove today flag' : 'Flag for today'}" onclick="event.stopPropagation();toggleFlag('${t.id}')">🚩</button>
                         <button class="card-expand-btn" id="expand-${t.id}">▶</button>
                     </div>
                 </div>
@@ -1936,6 +2109,7 @@ function renderTable(rows) {
                         ${stageChipsHtml}
                         ${actionChipsHtml}
                         <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages / actions">+</button>
+                        <button class="date-add-btn" onclick="event.stopPropagation();openDatePicker('${t.id}',this)" title="Edit key dates">📅</button>
                     </div>
                 </div>
                 ${datePillsHtml ? `<div class="card-dates-row">${datePillsHtml}</div>` : ''}
@@ -1968,6 +2142,36 @@ function toggleDetailRow(id) {
     if (!panel) return;
     const open = panel.classList.toggle('open');
     if (btn) btn.textContent = open ? '▼' : '▶';
+}
+
+function openCard(tenderId) {
+    // Switch to cards view (renders with current filters)
+    setMainView('cards');
+    function scrollAndExpand() {
+        const detail = document.getElementById('detail-' + tenderId);
+        if (!detail) {
+            // Card is filtered out — clear search + status filter then retry
+            const search = document.getElementById('tbl-search');
+            if (search) search.value = '';
+            const fStatus = document.getElementById('f-status');
+            if (fStatus) fStatus.value = '';
+            applyFilters();
+            requestAnimationFrame(function() {
+                const d2 = document.getElementById('detail-' + tenderId);
+                if (d2) {
+                    const card = d2.closest('.tender-card');
+                    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!d2.classList.contains('open')) toggleDetailRow(tenderId);
+                }
+            });
+            return;
+        }
+        const card = detail.closest('.tender-card');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (!detail.classList.contains('open')) toggleDetailRow(tenderId);
+    }
+    // Give renderTable one frame to finish
+    requestAnimationFrame(scrollAndExpand);
 }
 
 // ── STAGE PICKER ──────────────────────────────────────
@@ -2071,6 +2275,101 @@ async function updateStageAssignee(stageId, value) {
         await fbPatch('tenders/' + t.id, { tenderStages: stages });
     } catch(e) { toast('⚠ Save failed'); }
     applyFilters();
+}
+
+// ── DATE PICKER POPOVER ───────────────────────────────
+const DATE_PICKER_FIELDS = [
+    { key: 'saleEndDate',     label: 'Sale End'    },
+    { key: 'preBidDate',      label: 'Pre-Bid'     },
+    { key: 'bidOpeningDate',  label: 'Opening'     },
+    { key: 'raDate',          label: 'RA'          },
+    { key: 'negotiationDate', label: 'Negotiation' },
+    { key: 'tcqEndDate',      label: 'TCQ End'     },
+    { key: 'pboDate',         label: 'PBO'         },
+];
+let _datePickerTenderId = null;
+
+function openDatePicker(tenderId, btn) {
+    const pop = document.getElementById('date-popover');
+    if (_datePickerTenderId === tenderId && pop.style.display !== 'none') {
+        closeDatePicker(); return;
+    }
+    _datePickerTenderId = tenderId;
+    renderDatePickerList();
+    pop.style.display = 'flex';
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    pop.style.top = 'auto'; pop.style.bottom = 'auto';
+    if (spaceBelow >= 280) {
+        pop.style.top = (rect.bottom + 6) + 'px';
+    } else {
+        pop.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    }
+    const leftEdge = Math.min(rect.left, window.innerWidth - 286);
+    pop.style.left = Math.max(4, leftEdge) + 'px';
+}
+
+function renderDatePickerList() {
+    const t = tenders.find(x => x.id === _datePickerTenderId);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    document.getElementById('date-popover-list').innerHTML = DATE_PICKER_FIELDS.map(f => {
+        const val = (t && t[f.key]) || '';
+        const days = val ? Math.round((new Date(val) - new Date(todayStr)) / 86400000) : null;
+        let badge = '';
+        if (days !== null) {
+            const cls = days < 0 ? 'color:#c5221f' : days === 0 ? 'color:#c5221f' : days <= 2 ? 'color:#a05e00' : 'color:var(--primary)';
+            const when = days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'TODAY' : `${days}d`;
+            badge = `<span style="font-size:10px;font-weight:700;${cls};flex-shrink:0;">${when}</span>`;
+        }
+        return `<div class="date-popover-row">
+            <span class="date-popover-lbl">${f.label}</span>
+            <input type="date" class="date-popover-input" value="${esc(val)}"
+                onchange="saveDateField('${f.key}', this.value)"
+                onclick="event.stopPropagation()">
+            ${badge}
+            ${val ? `<button class="date-popover-clear" onclick="saveDateField('${f.key}','')">×</button>` : '<span style="width:20px;flex-shrink:0;"></span>'}
+        </div>`;
+    }).join('');
+}
+
+async function saveDateField(fieldKey, value) {
+    const t = tenders.find(x => x.id === _datePickerTenderId);
+    if (!t) return;
+    t[fieldKey] = value || null;
+    try {
+        await fbPatch('tenders/' + t.id, { [fieldKey]: value || null });
+    } catch(e) { toast('⚠ Save failed'); }
+    renderDatePickerList();
+    applyFilters();
+    if (_mainView === 'briefing') renderBriefing();
+}
+
+function closeDatePicker() {
+    document.getElementById('date-popover').style.display = 'none';
+    _datePickerTenderId = null;
+}
+
+document.addEventListener('click', function(e) {
+    const pop = document.getElementById('date-popover');
+    if (pop && pop.style.display !== 'none') {
+        if (!pop.contains(e.target) && !e.target.closest('.date-add-btn')) {
+            closeDatePicker();
+        }
+    }
+});
+
+// ── FLAG FOR TODAY ────────────────────────────────────
+async function toggleFlag(tenderId) {
+    const t = tenders.find(x => x.id === tenderId);
+    if (!t) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const newVal = t.flaggedDate === todayStr ? null : todayStr;
+    t.flaggedDate = newVal;
+    try {
+        await fbPatch('tenders/' + tenderId, { flaggedDate: newVal });
+    } catch(e) { toast('⚠ Save failed'); }
+    applyFilters();
+    if (_mainView === 'briefing') renderBriefing();
 }
 
 function closeStagePicker() {
@@ -2233,10 +2532,13 @@ function openEdit(id) {
     set('m-val-excl',     t.valueExclGST ?? '');
     set('m-landed',       t.finalLandedCost ?? '');
     set('m-remarks',      t.remarks);
-    set('m-sale-end',     t.saleEndDate    ?? '');
-    set('m-prebid',       t.preBidDate     ?? '');
-    set('m-bid-open',     t.bidOpeningDate ?? '');
-    set('m-ra-date',      t.raDate         ?? '');
+    set('m-sale-end',          t.saleEndDate      ?? '');
+    set('m-prebid',            t.preBidDate       ?? '');
+    set('m-bid-open',          t.bidOpeningDate   ?? '');
+    set('m-ra-date',           t.raDate           ?? '');
+    set('m-negotiation-date',  t.negotiationDate  ?? '');
+    set('m-tcq-end-date',      t.tcqEndDate       ?? '');
+    set('m-pbo-date',          t.pboDate          ?? '');
     // Populate WO fields based on split type
     document.getElementById('wo-list').innerHTML = '';
     if (t.tenderSplit === 'Yes') {
@@ -2480,10 +2782,13 @@ async function saveTender() {
         valueExclGST:    parseFloat(document.getElementById('m-val-excl').value) || null,
         finalLandedCost: parseFloat(document.getElementById('m-landed').value)  || null,
         remarks:         get('m-remarks'),
-        saleEndDate:     get('m-sale-end')   || null,
-        preBidDate:      get('m-prebid')     || null,
-        bidOpeningDate:  get('m-bid-open')   || null,
-        raDate:          get('m-ra-date')    || null,
+        saleEndDate:      get('m-sale-end')          || null,
+        preBidDate:       get('m-prebid')            || null,
+        bidOpeningDate:   get('m-bid-open')          || null,
+        raDate:           get('m-ra-date')           || null,
+        negotiationDate:  get('m-negotiation-date')  || null,
+        tcqEndDate:       get('m-tcq-end-date')      || null,
+        pboDate:          get('m-pbo-date')           || null,
     };
 
     const btn = document.getElementById('save-btn');
@@ -2493,7 +2798,17 @@ async function saveTender() {
         if (editId) {
             await fbPatch(`tenders/${editId}`, data);
             const idx = tenders.findIndex(t => t.id === editId);
-            if (idx !== -1) tenders[idx] = { id: editId, ...data };
+            if (idx !== -1) {
+                const existing = tenders[idx];
+                tenders[idx] = {
+                    ...existing,
+                    ...data,
+                    id: editId,
+                    tenderStages:  existing.tenderStages  || [],
+                    tenderActions: existing.tenderActions || [],
+                    flaggedDate:   existing.flaggedDate   || null,
+                };
+            }
             toast('Tender updated ✓');
         } else {
             data.createdAt = Date.now();
