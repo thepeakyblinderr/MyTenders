@@ -1894,7 +1894,7 @@ function renderBriefing() {
                 '<span style="width:9px;height:9px;border-radius:50%;background:' + col + ';flex-shrink:0;display:inline-block;"></span>' +
                 '<div class="bf-row-left"><div class="bf-row-title">' + esc(x.s.label) + '</div></div>' +
                 '<div class="bf-bar-wrap"><div class="bf-bar" style="width:' + pct + '%;background:' + col + ';"></div></div>' +
-                '<span class="bf-badge" style="background:' + col + '22;color:' + col + ';">' + x.items.length + '</span>' +
+                '<span class="bf-badge">' + x.items.length + '</span>' +
                 '</div>';
         }).join('')
         : '<div class="bf-empty">No active pipeline stages</div>';
@@ -2029,8 +2029,8 @@ function renderBriefing() {
                 var stageLabel = x.info ? esc(x.info.label) : '—';
                 var stageColor = x.info ? x.info.color : '#888';
                 var daysHtml = x.days !== null
-                    ? '<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:6px;margin-left:4px;' +
-                      (x.days > OVERDUE_DAYS ? 'background:rgba(255,59,48,.12);color:#c5221f;' : 'background:var(--primary-dim);color:var(--primary);') +
+                    ? '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;margin-left:4px;' +
+                      (x.days > OVERDUE_DAYS ? 'background:rgba(192,24,10,.10);color:var(--alert);' : 'background:var(--bg);color:var(--text-dim);') +
                       '">' + x.days + 'd</span>'
                     : '';
                 return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
@@ -2050,10 +2050,10 @@ function renderBriefing() {
                     '<div class="bf-row-left">' +
                         '<div class="bf-row-title">👤 ' + esc(p.name) + '</div>' +
                     '</div>' +
-                    '<div class="bf-bar-wrap"><div class="bf-bar" style="width:' + pct + '%;background:var(--primary);"></div></div>' +
-                    '<span class="bf-badge" style="background:var(--primary-dim);color:var(--primary);">' + p.items.length + '</span>' +
+                    '<div class="bf-bar-wrap"><div class="bf-bar" style="width:' + pct + '%;"></div></div>' +
+                    '<span class="bf-badge">' + p.items.length + '</span>' +
                 '</div>' +
-                '<div style="display:none;background:#fafafc;border-bottom:1px solid var(--sep);">' + assigneeRows + '</div>' +
+                '<div style="display:none;background:var(--bg);border-bottom:1px solid var(--sep);">' + assigneeRows + '</div>' +
             '</div>';
         }).join('')
         : '<div class="bf-empty">No stages assigned yet<br><span style="font-size:11px;margin-top:4px;display:block;">Use the + button on a stage chip to assign someone</span></div>';
