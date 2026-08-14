@@ -2559,7 +2559,16 @@ async function saveTender() {
         if (editId) {
             await fbPatch(`tenders/${editId}`, data);
             const idx = tenders.findIndex(t => t.id === editId);
-            if (idx !== -1) tenders[idx] = { id: editId, ...data };
+            if (idx !== -1) {
+                const existing = tenders[idx];
+                tenders[idx] = {
+                    ...existing,
+                    ...data,
+                    id: editId,
+                    tenderStages:  existing.tenderStages  || [],
+                    tenderActions: existing.tenderActions || [],
+                };
+            }
             toast('Tender updated ✓');
         } else {
             data.createdAt = Date.now();
