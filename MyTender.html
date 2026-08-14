@@ -211,6 +211,7 @@ input:focus, select:focus, textarea:focus {
 .card-title-wrap { flex:1; min-width:0; }
 .card-title { font-size:14.5px; font-weight:600; color:var(--text); line-height:1.35; }
 .card-refs { font-size:11px; color:var(--text-dim); margin-top:2px; }
+.card-num { font-weight:700; color:var(--text-sub); margin-right:3px; }
 .card-meta { font-size:12px; color:var(--text-sub); margin-top:3px; margin-bottom:10px; }
 .card-right { display:flex; align-items:center; gap:8px; flex-shrink:0; padding-top:2px; }
 .card-stages-row { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
@@ -2094,12 +2095,11 @@ function renderTable(rows) {
             <div class="card-header" onclick="toggleDetailRow('${t.id}')">
                 <div class="card-top-row">
                     <div class="card-title-wrap">
-                        <div class="card-title">${esc(t.nameOfWork)}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
-                        <div class="card-refs">${(() => {
-                            const primary = t.tenderNumber || (t.enividaNumber ? '…' + t.enividaNumber.slice(-5) : null);
-                            const rest = [t.prNo, t.tenderNumber ? t.enividaNumber : null].filter(Boolean);
-                            return [primary, ...rest].filter(Boolean).map(esc).join(' · ');
-                        })()}</div>
+                        <div class="card-title">${(() => {
+                            const num = t.tenderNumber || (t.enividaNumber ? '…' + t.enividaNumber.slice(-5) : '');
+                            return (num ? '<span class="card-num">' + esc(num) + '</span>' : '') + esc(t.nameOfWork);
+                        })()}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
+                        <div class="card-refs">${[t.prNo, t.enividaNumber].filter(Boolean).map(esc).join(' · ')}</div>
                     </div>
                     <div class="card-right">
                         ${statusBadge(t.status)}
