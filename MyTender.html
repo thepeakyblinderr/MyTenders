@@ -637,6 +637,13 @@ input:focus, select:focus, textarea:focus {
 .date-today  { background:rgba(255,59,48,.12);  color:#c5221f; }
 .date-soon   { background:rgba(255,149,0,.12);  color:#a05e00; }
 .date-week   { background:var(--primary-dim);   color:var(--primary); }
+.bf-dismiss-btn {
+    flex-shrink:0; padding:2px 8px; border:1px solid rgba(52,199,89,.4);
+    border-radius:6px; background:rgba(52,199,89,.10); color:#1a7a35;
+    font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;
+    transition:background .12s;
+}
+.bf-dismiss-btn:hover { background:rgba(52,199,89,.25); }
     </style>
 </head>
 <body>
@@ -1603,6 +1610,14 @@ function setMainView(v) {
     }
 }
 
+// ── DATE DISMISSAL (localStorage) ─────────────────────
+function _dismissKey(tid, fkey, date) { return 'dd_' + tid + '_' + fkey + '_' + date; }
+function dismissedDateKey(tid, fkey, date) { return !!localStorage.getItem(_dismissKey(tid, fkey, date)); }
+function dismissDate(tid, fkey, date) {
+    localStorage.setItem(_dismissKey(tid, fkey, date), '1');
+    renderBriefing();
+}
+
 function renderBriefing() {
     var todayStr = new Date().toISOString().slice(0, 10);
     var in7Str   = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
@@ -1689,7 +1704,9 @@ function renderBriefing() {
             var d = t[f.key];
             if (!d || d < past7Str || d > in7Str) return;
             var dl = Math.round((new Date(d) - new Date(todayStr)) / 86400000);
-            keyDateItems.push({ t: t, label: f.label, date: d, dl: dl, missed: dl < 0 });
+            var missed = dl < 0;
+            if (missed && dismissedDateKey(t.id, f.key, d)) return; // skip acknowledged
+            keyDateItems.push({ t: t, label: f.label, date: d, dl: dl, missed: missed, fkey: f.key });
         });
     });
     // Sort: missed first (most recent first), then upcoming (soonest first)
@@ -1709,7 +1726,7 @@ function renderBriefing() {
         ? keyDateItems.map(function(x) {
             var cls, when;
             if (x.dl < 0) {
-                cls = 'date-today'; // red — missed
+                cls = 'date-today';
                 when = Math.abs(x.dl) + 'd ago';
             } else if (x.dl === 0) {
                 cls = 'date-today'; when = 'TODAY';
@@ -1718,13 +1735,16 @@ function renderBriefing() {
             } else {
                 cls = 'date-week'; when = 'in ' + x.dl + 'd';
             }
-            var missedMark = x.missed ? '<span style="font-size:10px;margin-right:3px;" title="Date missed">⚠</span>' : '';
+            var dismissBtn = x.missed
+                ? '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>'
+                : '';
             return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + missedMark + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + (x.missed ? '<span style="font-size:10px;margin-right:3px;">⚠</span>' : '') + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge ' + cls + '">' + when + '</span>' +
+                dismissBtn +
                 '</div>';
         }).join('')
         : '<div class="bf-empty">✅ No key dates in ±7 days</div>';
