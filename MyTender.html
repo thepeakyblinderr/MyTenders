@@ -2095,7 +2095,11 @@ function renderTable(rows) {
                 <div class="card-top-row">
                     <div class="card-title-wrap">
                         <div class="card-title">${esc(t.nameOfWork)}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
-                        <div class="card-refs">${[t.prNo, t.enividaNumber, t.tenderNumber].filter(Boolean).map(esc).join(' · ')}</div>
+                        <div class="card-refs">${(() => {
+                            const primary = t.tenderNumber || (t.enividaNumber ? '…' + t.enividaNumber.slice(-5) : null);
+                            const rest = [t.prNo, t.tenderNumber ? t.enividaNumber : null].filter(Boolean);
+                            return [primary, ...rest].filter(Boolean).map(esc).join(' · ');
+                        })()}</div>
                     </div>
                     <div class="card-right">
                         ${statusBadge(t.status)}
