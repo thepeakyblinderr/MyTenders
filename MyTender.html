@@ -1425,9 +1425,11 @@ let editId       = null;
 let delId        = null;
 
 // ── E-INK MODE ───────────────────────────────────────
+var _einkMode = false;
 (function() {
     const params = new URLSearchParams(location.search);
     const active = params.get('eink') === '1' || localStorage.getItem('eink') === '1';
+    _einkMode = active;
     if (active) {
         document.getElementById('eink-style').removeAttribute('disabled');
         localStorage.setItem('eink', '1');
@@ -2092,6 +2094,10 @@ function renderTable(rows) {
             const days = stageDays(st.enteredAt);
             const overdue = days !== null && days > OVERDUE_DAYS;
             const title = `${info.label}${st.assignedTo ? ' · ' + st.assignedTo : ''}${days !== null ? ' · ' + days + 'd' : ''}`;
+            if (_einkMode) {
+                const overdueStyle = overdue ? 'outline:2px solid #c0160a;outline-offset:1px;' : '';
+                return `<span class="stage-chip${overdue ? ' stage-chip-overdue' : ''}" style="background:#fff;color:#0a0a0a;border:1.5px solid #999;border-left:4px solid ${info.color};${overdueStyle}" title="${esc(title)}">${esc(info.label)}${overdue ? ` ⚠${days}d` : ''}</span>`;
+            }
             return `<span class="stage-chip${overdue ? ' stage-chip-overdue' : ''}" style="background:${info.color}" title="${esc(title)}">${esc(info.label)}${overdue ? ` ⚠${days}d` : ''}</span>`;
         }).join('');
 
@@ -2100,6 +2106,10 @@ function renderTable(rows) {
             const days = a.enteredAt ? Math.round((Date.now() - a.enteredAt) / 86400000) : null;
             const overdue = days !== null && days > OVERDUE_DAYS;
             const title = `${a.text}${a.assignedTo ? ' · ' + a.assignedTo : ''}${days !== null ? ' · ' + days + 'd' : ''}`;
+            if (_einkMode) {
+                const color = overdue ? '#c0160a' : '#0055cc';
+                return `<span class="action-chip${overdue ? ' action-chip-overdue' : ''}" style="background:#fff;color:#0a0a0a;border:1.5px solid #999;border-left:4px solid ${color};" title="${esc(title)}">📝 ${esc(a.text)}${overdue ? ` ⚠${days}d` : ''}</span>`;
+            }
             return `<span class="action-chip${overdue ? ' action-chip-overdue' : ''}" title="${esc(title)}">📝 ${esc(a.text)}${overdue ? ` ⚠${days}d` : ''}</span>`;
         }).join('');
 
