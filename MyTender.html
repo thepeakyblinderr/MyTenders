@@ -872,6 +872,13 @@ input:focus, select:focus, textarea:focus {
             <div class="bf-grid">
                 <div class="bf-card">
                     <div class="bf-head">
+                        <span class="bf-head-title">📅 Key Dates</span>
+                        <span class="bf-head-count" id="bf-dates-count"></span>
+                    </div>
+                    <div class="bf-body" id="bf-dates"></div>
+                </div>
+                <div class="bf-card">
+                    <div class="bf-head">
                         <span class="bf-head-title">🗂 Stage Congestion</span>
                         <span class="bf-head-count" id="bf-stage-count"></span>
                     </div>
@@ -883,13 +890,6 @@ input:focus, select:focus, textarea:focus {
                         <span class="bf-head-count" id="bf-stuck-count"></span>
                     </div>
                     <div class="bf-body" id="bf-stuck"></div>
-                </div>
-                <div class="bf-card">
-                    <div class="bf-head">
-                        <span class="bf-head-title">📅 Upcoming (7 days)</span>
-                        <span class="bf-head-count" id="bf-dates-count"></span>
-                    </div>
-                    <div class="bf-body" id="bf-dates"></div>
                 </div>
                 <div class="bf-card">
                     <div class="bf-head">
@@ -1671,7 +1671,7 @@ function renderBriefing() {
         }).join('')
         : '<div class="bf-empty">✅ Nothing stuck &gt;' + OVERDUE_DAYS + ' days</div>';
 
-    // ── 3. Upcoming Key Dates (next 7 days) ─────────────
+    // ── 3. Key Dates (missed last 7d + upcoming 7d) ──────
     var DATE_FIELDS = [
         { key: 'saleEndDate',     label: 'Sale End'    },
         { key: 'preBidDate',      label: 'Pre-Bid'     },
@@ -1681,32 +1681,53 @@ function renderBriefing() {
         { key: 'tcqEndDate',      label: 'TCQ End'     },
         { key: 'pboDate',         label: 'PBO'         },
     ];
-    var upcoming = [];
+    var past7Str = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+    var keyDateItems = [];
     tenders.forEach(function(t) {
         if (t.status === 'Awarded' || t.status === 'Cancelled') return;
         DATE_FIELDS.forEach(function(f) {
             var d = t[f.key];
-            if (!d || d < todayStr || d > in7Str) return;
+            if (!d || d < past7Str || d > in7Str) return;
             var dl = Math.round((new Date(d) - new Date(todayStr)) / 86400000);
-            upcoming.push({ t: t, label: f.label, date: d, dl: dl });
+            keyDateItems.push({ t: t, label: f.label, date: d, dl: dl, missed: dl < 0 });
         });
     });
-    upcoming.sort(function(a, b) { return a.dl - b.dl; });
+    // Sort: missed first (most recent first), then upcoming (soonest first)
+    keyDateItems.sort(function(a, b) {
+        if (a.missed && !b.missed) return -1;
+        if (!a.missed && b.missed) return 1;
+        return a.dl - b.dl;
+    });
 
-    document.getElementById('bf-dates-count').textContent = upcoming.length + (upcoming.length === 1 ? ' event' : ' events');
-    document.getElementById('bf-dates').innerHTML = upcoming.length
-        ? upcoming.map(function(x) {
-            var cls  = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
-            var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+    var missedCount = keyDateItems.filter(function(x) { return x.missed; }).length;
+    var upcomingCount = keyDateItems.length - missedCount;
+    var countParts = [];
+    if (missedCount) countParts.push(missedCount + ' missed');
+    if (upcomingCount) countParts.push(upcomingCount + ' upcoming');
+    document.getElementById('bf-dates-count').textContent = countParts.join(', ') || '0 events';
+    document.getElementById('bf-dates').innerHTML = keyDateItems.length
+        ? keyDateItems.map(function(x) {
+            var cls, when;
+            if (x.dl < 0) {
+                cls = 'date-today'; // red — missed
+                when = Math.abs(x.dl) + 'd ago';
+            } else if (x.dl === 0) {
+                cls = 'date-today'; when = 'TODAY';
+            } else if (x.dl <= 2) {
+                cls = 'date-soon'; when = x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+            } else {
+                cls = 'date-week'; when = 'in ' + x.dl + 'd';
+            }
+            var missedMark = x.missed ? '<span style="font-size:10px;margin-right:3px;" title="Date missed">⚠</span>' : '';
             return '<div class="bf-row" onclick="openEdit(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + missedMark + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge ' + cls + '">' + when + '</span>' +
                 '</div>';
         }).join('')
-        : '<div class="bf-empty">✅ No dates in next 7 days</div>';
+        : '<div class="bf-empty">✅ No key dates in ±7 days</div>';
 
     // ── 4. Workload ──────────────────────────────────────
     var wlMap = {};
@@ -1891,9 +1912,9 @@ function renderTable(rows) {
         const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Opening'],['raDate','RA'],['negotiationDate','Negotiation'],['tcqEndDate','TCQ End'],['pboDate','PBO']].map(([k, lbl]) => {
             if (!t[k]) return '';
             const d = Math.round((new Date(t[k]) - new Date(todayStr)) / 86400000);
-            if (d < -1) return '';
-            const cls = d <= 0 ? 'kd-today' : d <= 2 ? 'kd-soon' : 'kd-week';
-            const when = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d`;
+            if (d < -7) return ''; // only show up to 7 days past
+            const cls = d < 0 ? 'kd-today' : d === 0 ? 'kd-today' : d <= 2 ? 'kd-soon' : 'kd-week';
+            const when = d < 0 ? `⚠ ${Math.abs(d)}d ago` : d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : `${d}d`;
             return `<span class="kd-pill ${cls}" style="cursor:default;font-size:11px;padding:2px 8px 2px 6px;"><span class="kd-dot"></span><span class="kd-type">${lbl}</span>: ${when}</span>`;
         }).join('');
 
