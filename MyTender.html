@@ -328,6 +328,51 @@ input:focus, select:focus, textarea:focus {
 }
 .stage-assign-input:focus { border-color:var(--primary); }
 
+/* Stage popover — Quick Actions footer */
+.stage-popover-footer {
+    border-top:1px solid var(--sep); padding:10px 12px 12px;
+    background:#fafafc; flex-shrink:0;
+}
+.stage-actions-title {
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+    color:var(--text-dim); margin-bottom:8px;
+}
+.stage-action-add { display:flex; gap:5px; align-items:center; }
+.stage-action-add input { padding:5px 8px; font-size:12.5px; }
+.stage-action-text { flex:1; min-width:0; }
+.stage-action-who { width:76px; flex-shrink:0; }
+.action-add-btn {
+    padding:5px 11px; background:var(--primary); color:#fff; border:none;
+    border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;
+    font-family:inherit; transition:opacity .15s;
+}
+.action-add-btn:hover { opacity:.85; }
+.stage-action-list { margin-top:7px; }
+.stage-action-item {
+    display:flex; align-items:center; gap:6px;
+    padding:4px 0; border-bottom:1px solid var(--sep); font-size:12px;
+}
+.stage-action-item:last-child { border-bottom:none; }
+.stage-action-del {
+    padding:1px 6px; border:1px solid var(--sep); border-radius:5px;
+    background:transparent; color:var(--text-sub); cursor:pointer; font-size:11px;
+    flex-shrink:0; font-family:inherit; transition:background .12s;
+}
+.stage-action-del:hover { background:rgba(255,59,48,.08); color:var(--red); border-color:var(--red); }
+
+/* Action chips on cards */
+.action-chip {
+    display:inline-flex; align-items:center; gap:3px;
+    padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;
+    background:rgba(0,122,255,0.10); color:var(--primary);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;
+    cursor:default;
+}
+.action-chip-overdue {
+    background:rgba(255,59,48,.12); color:#c5221f;
+    outline:1px solid rgba(255,59,48,.25);
+}
+
 /* ── BUTTONS ── */
 .btn {
     padding:8px 17px; border-radius:var(--radius-sm); font-size:13.5px;
@@ -1142,6 +1187,16 @@ input:focus, select:focus, textarea:focus {
         <input type="text" id="stage-search" placeholder="Search stages…" oninput="filterStageList()">
     </div>
     <div class="stage-popover-list" id="stage-list"></div>
+    <div class="stage-popover-footer">
+        <div class="stage-actions-title">Quick Actions / Notes</div>
+        <div class="stage-action-add">
+            <input type="text" id="action-text-input" class="stage-action-text" placeholder="Action or note…" list="action-suggestions" onkeydown="if(event.key==='Enter')addTenderAction()">
+            <datalist id="action-suggestions"></datalist>
+            <input type="text" id="action-assignee-input" class="stage-action-who" placeholder="Who?" onkeydown="if(event.key==='Enter')addTenderAction()">
+            <button class="action-add-btn" onclick="addTenderAction()">+ Add</button>
+        </div>
+        <div class="stage-action-list" id="stage-action-list"></div>
+    </div>
 </div>
 
 <!-- ═══ IMPORT MODAL ═══ -->
@@ -1569,7 +1624,7 @@ function renderBriefing() {
         }).join('')
         : '<div class="bf-empty">No active pipeline stages</div>';
 
-    // ── 2. Stuck Tenders (>14 days in same stage) ───────
+    // ── 2. Stuck Tenders (>14 days in same stage or action) ─
     var stuckList = [];
     tenders.forEach(function(t) {
         normalizeStages(t.tenderStages || []).forEach(function(st) {
@@ -1578,6 +1633,12 @@ function renderBriefing() {
             var info = STAGES.find(function(x) { return x.id === st.id; });
             if (!info) return;
             stuckList.push({ t: t, info: info, days: days, assignedTo: st.assignedTo });
+        });
+        (t.tenderActions || []).forEach(function(a) {
+            if (!a.enteredAt) return;
+            var days = Math.round((Date.now() - a.enteredAt) / 86400000);
+            if (days < OVERDUE_DAYS) return;
+            stuckList.push({ t: t, info: { label: '📝 ' + a.text, color: '#6e6e73' }, days: days, assignedTo: a.assignedTo });
         });
     });
     stuckList.sort(function(a, b) { return b.days - a.days; });
@@ -1642,6 +1703,13 @@ function renderBriefing() {
             if (!wlMap[name]) wlMap[name] = [];
             var info = STAGES.find(function(x) { return x.id === st.id; });
             wlMap[name].push({ t: t, info: info, days: stageDays(st.enteredAt) });
+        });
+        (t.tenderActions || []).forEach(function(a) {
+            var name = (a.assignedTo || '').trim();
+            if (!name) return;
+            if (!wlMap[name]) wlMap[name] = [];
+            var days = a.enteredAt ? Math.round((Date.now() - a.enteredAt) / 86400000) : null;
+            wlMap[name].push({ t: t, info: { label: '📝 ' + a.text, color: '#6e6e73' }, days: days });
         });
     });
     var wlList = Object.keys(wlMap)
@@ -1797,6 +1865,14 @@ function renderTable(rows) {
             return `<span class="stage-chip${overdue ? ' stage-chip-overdue' : ''}" style="background:${info.color}" title="${esc(title)}">${esc(info.label)}${overdue ? ` ⚠${days}d` : ''}</span>`;
         }).join('');
 
+        // Action chips
+        const actionChipsHtml = (t.tenderActions || []).map(a => {
+            const days = a.enteredAt ? Math.round((Date.now() - a.enteredAt) / 86400000) : null;
+            const overdue = days !== null && days > OVERDUE_DAYS;
+            const title = `${a.text}${a.assignedTo ? ' · ' + a.assignedTo : ''}${days !== null ? ' · ' + days + 'd' : ''}`;
+            return `<span class="action-chip${overdue ? ' action-chip-overdue' : ''}" title="${esc(title)}">📝 ${esc(a.text)}${overdue ? ` ⚠${days}d` : ''}</span>`;
+        }).join('');
+
         // Key date pills (show only upcoming / today)
         const datePillsHtml = [['saleEndDate','Sale End'],['preBidDate','Pre-Bid'],['bidOpeningDate','Bid Opening'],['raDate','RA']].map(([k, lbl]) => {
             if (!t[k]) return '';
@@ -1862,7 +1938,8 @@ function renderTable(rows) {
                 <div class="card-stages-row">
                     <div class="stage-chips">
                         ${stageChipsHtml}
-                        <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages">+</button>
+                        ${actionChipsHtml}
+                        <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages / actions">+</button>
                     </div>
                 </div>
                 ${datePillsHtml ? `<div class="card-dates-row">${datePillsHtml}</div>` : ''}
@@ -1908,7 +1985,10 @@ function openStagePicker(tenderId, btn) {
     }
     _stagePickerTenderId = tenderId;
     document.getElementById('stage-search').value = '';
+    document.getElementById('action-text-input').value = '';
+    document.getElementById('action-assignee-input').value = '';
     renderStageList();
+    renderActionList();
     pop.style.display = 'flex';
     // Position relative to viewport (position:fixed — no scrollY adjustment)
     const rect = btn.getBoundingClientRect();
@@ -2000,6 +2080,65 @@ async function updateStageAssignee(stageId, value) {
 function closeStagePicker() {
     document.getElementById('stage-popover').style.display = 'none';
     _stagePickerTenderId = null;
+}
+
+function renderActionList() {
+    const t = tenders.find(x => x.id === _stagePickerTenderId);
+    const actions = (t && t.tenderActions) ? t.tenderActions : [];
+
+    // Populate datalist suggestions from all tenders
+    const allTexts = new Set();
+    tenders.forEach(t2 => (t2.tenderActions || []).forEach(a => { if (a.text) allTexts.add(a.text); }));
+    document.getElementById('action-suggestions').innerHTML =
+        [...allTexts].map(txt => `<option value="${esc(txt)}">`).join('');
+
+    document.getElementById('stage-action-list').innerHTML = actions.length
+        ? actions.map((a, i) => {
+            const days = a.enteredAt ? Math.round((Date.now() - a.enteredAt) / 86400000) : null;
+            const overdue = days !== null && days > OVERDUE_DAYS;
+            const daysHtml = days !== null
+                ? `<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:6px;flex-shrink:0;${overdue ? 'background:rgba(255,59,48,.12);color:#c5221f;' : 'background:var(--primary-dim);color:var(--primary);'}">${days}d</span>`
+                : '';
+            return `<div class="stage-action-item">
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.text)}</span>
+                ${a.assignedTo ? `<span style="font-size:11px;color:var(--text-sub);white-space:nowrap;flex-shrink:0;">👤 ${esc(a.assignedTo)}</span>` : ''}
+                ${daysHtml}
+                <button class="stage-action-del" onclick="deleteTenderAction(${i})">✕</button>
+            </div>`;
+        }).join('')
+        : '<div style="font-size:12px;color:var(--text-dim);padding:4px 0;">No actions yet — add one above</div>';
+}
+
+async function addTenderAction() {
+    const textEl = document.getElementById('action-text-input');
+    const assigneeEl = document.getElementById('action-assignee-input');
+    const text = textEl.value.trim();
+    if (!text) { textEl.focus(); return; }
+    const t = tenders.find(x => x.id === _stagePickerTenderId);
+    if (!t) return;
+    const actions = t.tenderActions ? [...t.tenderActions] : [];
+    actions.push({ text, assignedTo: assigneeEl.value.trim(), enteredAt: Date.now() });
+    t.tenderActions = actions;
+    textEl.value = ''; assigneeEl.value = '';
+    try {
+        await fbPatch('tenders/' + t.id, { tenderActions: actions });
+        toast('Action added');
+    } catch(e) { toast('⚠ Save failed: ' + e.message); }
+    renderActionList();
+    applyFilters();
+}
+
+async function deleteTenderAction(idx) {
+    const t = tenders.find(x => x.id === _stagePickerTenderId);
+    if (!t) return;
+    const actions = [...(t.tenderActions || [])];
+    actions.splice(idx, 1);
+    t.tenderActions = actions;
+    try {
+        await fbPatch('tenders/' + t.id, { tenderActions: actions });
+    } catch(e) { toast('⚠ Save failed'); }
+    renderActionList();
+    applyFilters();
 }
 
 document.addEventListener('click', function(e) {
