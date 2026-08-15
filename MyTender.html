@@ -210,24 +210,43 @@ input:focus, select:focus, textarea:focus {
     transition:box-shadow .18s;
 }
 .tender-card:hover { box-shadow:var(--shadow-md); }
-.card-header { padding:16px 18px 12px; cursor:pointer; user-select:none; }
-.card-top-row {
-    display:flex; align-items:flex-start; justify-content:space-between;
-    gap:12px; margin-bottom:2px;
+
+/* Two-column card header */
+.card-header {
+    display:flex; align-items:flex-start; gap:16px;
+    padding:14px 18px 12px; cursor:pointer; user-select:none;
 }
-.card-title-wrap { flex:1; min-width:0; }
+.card-left { flex:1; min-width:0; }
 .card-title { font-size:14px; font-weight:700; color:var(--text); line-height:1.35; letter-spacing:-.1px; }
 .card-refs { font-size:11px; color:var(--text-dim); margin-top:3px; font-weight:500; }
 .card-num { font-weight:700; color:var(--text-sub); margin-right:3px; }
 .card-meta { display:none; }
-.card-right { display:flex; align-items:center; gap:6px; flex-shrink:0; padding-top:2px; }
+.card-right { display:none; } /* replaced by .card-actions */
 .card-right .badge { display:none; }
-.card-stages-row { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
-.card-dates-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+
+/* Right chips panel */
+.card-chips {
+    width:38%; flex-shrink:0;
+    display:flex; flex-direction:column; gap:6px; padding-top:2px;
+}
+.card-stages-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+.card-dates-row { display:flex; flex-wrap:wrap; gap:5px; }
+
+/* Far-right actions column */
+.card-actions {
+    flex-shrink:0; display:flex; flex-direction:column;
+    align-items:center; gap:6px; padding-top:3px;
+}
+.card-expand-btn {
+    background:none; border:1px solid var(--sep); border-radius:99px;
+    cursor:pointer; font-size:10px; color:var(--text-dim); padding:3px 9px; transition:all .15s;
+    font-family:inherit;
+}
+.card-expand-btn:hover { border-color:var(--text-sub); color:var(--text); }
 
 /* Card detail panel */
 .card-detail {
-    border-top:1px solid var(--sep); padding:16px 18px;
+    border-top:1px solid var(--sep); padding:16px 18px 0;
     background:#faf9f7; display:none;
 }
 .card-detail.open { display:block; }
@@ -240,15 +259,13 @@ input:focus, select:focus, textarea:focus {
 }
 .cd-val { font-size:13px; color:var(--text); line-height:1.4; font-weight:500; }
 .cd-span { grid-column:1/-1; }
+
+/* Footer lives inside expanded detail */
 .card-footer {
-    border-top:1px solid var(--sep); padding:10px 18px;
-    display:flex; gap:7px; justify-content:flex-end; background:#faf9f7;
+    margin-top:14px; padding:10px 0;
+    border-top:1px solid var(--sep);
+    display:flex; gap:7px; justify-content:flex-end;
 }
-.card-expand-btn {
-    background:none; border:1px solid var(--sep); border-radius:99px;
-    cursor:pointer; font-size:11px; color:var(--text-dim); padding:3px 10px; transition:all .15s;
-}
-.card-expand-btn:hover { border-color:var(--text-sub); color:var(--text); }
 
 /* ── BADGES / TAGS / MISC ── */
 .badge {
@@ -811,7 +828,12 @@ input:focus, select:focus, textarea:focus {
     }
     .card-detail { padding:12px 14px; }
     .card-detail-grid { grid-template-columns:1fr 1fr; gap:10px 14px; }
-    .card-footer { padding:8px 14px; }
+    .card-footer { padding:8px 0 4px; }
+
+    /* Two-column card → stack on mobile */
+    .card-header { flex-wrap:wrap; }
+    .card-chips { width:100%; order:3; padding-top:6px; }
+    .card-actions { flex-direction:row; margin-left:auto; align-self:flex-start; order:2; padding-top:0; }
 
     /* Stop page-level horizontal scroll */
     .main-content { overflow-x:hidden; }
@@ -2229,30 +2251,28 @@ function renderTable(rows) {
         const isFlaggedToday = t.flaggedDate === todayStr;
         return `<div class="tender-card${isFlaggedToday ? ' today-flagged' : ''}">
             <div class="card-header" onclick="toggleDetailRow('${t.id}')">
-                <div class="card-top-row">
-                    <div class="card-title-wrap">
-                        <div class="card-title">${(() => {
-                            const num = t.tenderNumber || (t.enividaNumber ? '…' + t.enividaNumber.slice(-5) : '');
-                            return (num ? '<span class="card-num">' + esc(num) + '</span>' : '') + esc(t.nameOfWork);
-                        })()}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
-                        <div class="card-refs">${[t.prNo, t.enividaNumber].filter(Boolean).map(esc).join(' · ')}</div>
-                    </div>
-                    <div class="card-right">
-                        ${statusBadge(t.status)}
-                        <button class="card-flag-btn${isFlaggedToday ? ' flagged' : ''}" title="${isFlaggedToday ? 'Remove today flag' : 'Flag for today'}" onclick="event.stopPropagation();toggleFlag('${t.id}')">🚩</button>
-                        <button class="card-expand-btn" id="expand-${t.id}">▶</button>
-                    </div>
+                <div class="card-left">
+                    <div class="card-title">${(() => {
+                        const num = t.tenderNumber || (t.enividaNumber ? '…' + t.enividaNumber.slice(-5) : '');
+                        return (num ? '<span class="card-num">' + esc(num) + '</span>' : '') + esc(t.nameOfWork);
+                    })()}${t.isCritical==='Yes'?'<span class="tag tag-critical">CRITICAL</span>':''}${t.shutdownJob==='Yes'?'<span class="tag tag-shutdown">SHUTDOWN</span>':''}${t.budgetType==='AF'?'<span class="tag tag-af">AF</span>':''}${t.tenderSplit==='Yes'?'<span class="tag tag-split">SPLIT</span>':''}</div>
+                    <div class="card-refs">${[t.prNo, t.enividaNumber].filter(Boolean).map(esc).join(' · ')}</div>
                 </div>
-                <div class="card-meta">${[t.department, t.tenderMode, t.financialYear ? `FY ${esc(t.financialYear)}` : '', t.fileHandler].filter(Boolean).join(' · ')}</div>
-                <div class="card-stages-row">
-                    <div class="stage-chips">
-                        ${stageChipsHtml}
-                        ${actionChipsHtml}
-                        <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages / actions">+</button>
-                        <button class="date-add-btn" onclick="event.stopPropagation();openDatePicker('${t.id}',this)" title="Edit key dates">📅</button>
+                <div class="card-chips">
+                    <div class="card-stages-row">
+                        <div class="stage-chips">
+                            ${stageChipsHtml}
+                            ${actionChipsHtml}
+                            <button class="stage-add-btn" onclick="event.stopPropagation();openStagePicker('${t.id}',this)" title="Edit stages / actions">+</button>
+                            <button class="date-add-btn" onclick="event.stopPropagation();openDatePicker('${t.id}',this)" title="Edit key dates">📅</button>
+                        </div>
                     </div>
+                    ${datePillsHtml ? `<div class="card-dates-row">${datePillsHtml}</div>` : ''}
                 </div>
-                ${datePillsHtml ? `<div class="card-dates-row">${datePillsHtml}</div>` : ''}
+                <div class="card-actions">
+                    <button class="card-flag-btn${isFlaggedToday ? ' flagged' : ''}" title="${isFlaggedToday ? 'Remove today flag' : 'Flag for today'}" onclick="event.stopPropagation();toggleFlag('${t.id}')">🚩</button>
+                    <button class="card-expand-btn" id="expand-${t.id}">▶</button>
+                </div>
             </div>
             <div class="card-detail" id="detail-${t.id}">
                 <div class="card-detail-grid">
@@ -2267,10 +2287,10 @@ function renderTable(rows) {
                     ${keyDatesHtml ? `<div class="cd-span"><div class="cd-lbl">Key Dates</div><div class="cd-val" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;">${keyDatesHtml}</div></div>` : ''}
                     ${t.remarks ? `<div class="cd-span"><div class="cd-lbl">Remarks</div><div class="cd-val" style="white-space:pre-wrap;color:var(--text-sub);">${esc(t.remarks)}</div></div>` : ''}
                 </div>
-            </div>
-            <div class="card-footer">
-                <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">Edit</button>
-                <button class="btn-sm btn-del"  onclick="openDel('${t.id}')">Delete</button>
+                <div class="card-footer">
+                    <button class="btn-sm btn-edit" onclick="openEdit('${t.id}')">Edit</button>
+                    <button class="btn-sm btn-del"  onclick="openDel('${t.id}')">Delete</button>
+                </div>
             </div>
         </div>`;
     }).join('');
