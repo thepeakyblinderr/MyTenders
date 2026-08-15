@@ -156,6 +156,41 @@ input:focus, select:focus, textarea:focus {
 }
 .sb-btn-ghost:hover { background:var(--bg); color:var(--text); }
 
+/* ── STATS DRAWER ── */
+.stats-drawer {
+    position:fixed; top:0; right:0; bottom:0; width:288px;
+    background:var(--card); z-index:160; overflow-y:auto;
+    transform:translateX(100%); transition:transform .26s cubic-bezier(.4,0,.2,1);
+    box-shadow:-4px 0 28px rgba(0,0,0,.10); border-left:1px solid var(--sep);
+    display:flex; flex-direction:column;
+}
+.stats-drawer.open { transform:translateX(0); }
+.stats-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.18); z-index:155;
+    display:none; -webkit-tap-highlight-color:transparent;
+}
+.stats-overlay.open { display:block; }
+.stats-drawer-head {
+    padding:20px 18px 14px; border-bottom:1px solid var(--sep);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.stats-drawer-title { font-size:13px; font-weight:700; color:var(--text); }
+.stats-drawer-close {
+    background:none; border:1px solid var(--sep); border-radius:99px;
+    padding:4px 10px; font-size:12px; color:var(--text-dim);
+    cursor:pointer; font-family:inherit; transition:all .15s;
+}
+.stats-drawer-close:hover { border-color:var(--text-sub); color:var(--text); }
+
+/* Stats button in topbar */
+.stats-open-btn {
+    padding:6px 14px; border:1px solid var(--sep); border-radius:99px;
+    background:var(--card); color:var(--text-sub); font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit; box-shadow:var(--shadow-sm);
+    transition:all .15s; white-space:nowrap; flex-shrink:0;
+}
+.stats-open-btn:hover { border-color:var(--text-sub); color:var(--text); }
+
 /* ── MAIN CONTENT ── */
 .main-content { margin-left:var(--sidebar-w); flex:1; padding:24px 28px; min-height:100vh; }
 .main-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
@@ -884,6 +919,10 @@ input:focus, select:focus, textarea:focus {
 
     /* Sidebar stats */
     .sb-stat-num { font-size:18px; }
+
+    /* Stats drawer: full width on mobile */
+    .stats-drawer { width:100%; border-left:none; }
+    .stats-open-btn { display:none; } /* only show in mobile header */
 }
     </style>
 </head>
@@ -925,18 +964,20 @@ input:focus, select:focus, textarea:focus {
     <div class="mob-header">
         <button class="mob-menu-btn" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
         <span class="mob-brand">📋 MyTenders</span>
+        <button class="mob-menu-btn" onclick="openStatsDrawer()" aria-label="Stats" style="font-size:15px;">📊</button>
         <button class="mob-add-btn" onclick="openAdd()" aria-label="Add Tender">+</button>
     </div>
     <!-- Sidebar overlay (mobile only) -->
     <div class="mob-overlay" onclick="toggleMobSidebar()"></div>
 
     <!-- ── SIDEBAR ── -->
-    <aside class="sidebar">
-        <div class="sb-brand">
-            <h1>📋 MyTenders</h1>
-            <span id="sync-status"></span>
+    <!-- ── STATS DRAWER ── -->
+    <div class="stats-overlay" id="stats-overlay" onclick="closeStatsDrawer()"></div>
+    <div class="stats-drawer" id="stats-drawer">
+        <div class="stats-drawer-head">
+            <span class="stats-drawer-title">Stats</span>
+            <button class="stats-drawer-close" onclick="closeStatsDrawer()">✕ Close</button>
         </div>
-
         <!-- Overview stats -->
         <div class="sb-sec">
             <div class="sb-sec-title">Overview</div>
@@ -958,16 +999,14 @@ input:focus, select:focus, textarea:focus {
                     <span class="sb-stat-num c-num-red" id="c-cancelled">0</span>
                     <span class="sb-stat-lbl">Cancelled</span>
                 </div>
-                <div class="sb-stat wide clickable" onclick="filterCritical()" title="Filter critical">
+                <div class="sb-stat wide clickable" onclick="filterCritical();closeStatsDrawer();" title="Filter critical">
                     <span class="sb-stat-num c-num-red" id="c-critical">0</span>
                     <span class="sb-stat-lbl">🚨 Critical</span>
                 </div>
             </div>
         </div>
-
         <div class="sb-sep"></div>
-
-        <!-- Secondary stats -->
+        <!-- By Type -->
         <div class="sb-sec">
             <div class="sb-sec-title">By Type</div>
             <div class="sb-mini-grid">
@@ -1009,16 +1048,19 @@ input:focus, select:focus, textarea:focus {
                 </div>
             </div>
         </div>
-
         <div class="sb-sep"></div>
-
-        <!-- Top departments -->
+        <!-- Top Departments -->
         <div class="sb-sec">
             <div class="sb-sec-title">Top Departments</div>
             <div id="dept-rows"></div>
         </div>
+    </div>
 
-        <div class="sb-sep"></div>
+    <aside class="sidebar">
+        <div class="sb-brand">
+            <h1>📋 MyTenders</h1>
+            <span id="sync-status"></span>
+        </div>
 
         <!-- Filters -->
         <div class="sb-sec" style="padding-bottom:4px;">
@@ -1122,6 +1164,7 @@ input:focus, select:focus, textarea:focus {
                 <option value="">All Stages</option>
             </select>
             <button class="topbar-clear" onclick="clearFilters()">✕ Clear</button>
+            <button class="stats-open-btn" onclick="openStatsDrawer()">📊 Stats</button>
         </div>
 
         <!-- ── BRIEFING PANEL (default) ── -->
@@ -2126,6 +2169,15 @@ function togglePipelineStats() {
     var open  = panel.style.display === 'none';
     panel.style.display = open ? '' : 'none';
     icon.classList.toggle('open', open);
+}
+
+function openStatsDrawer() {
+    document.getElementById('stats-drawer').classList.add('open');
+    document.getElementById('stats-overlay').classList.add('open');
+}
+function closeStatsDrawer() {
+    document.getElementById('stats-drawer').classList.remove('open');
+    document.getElementById('stats-overlay').classList.remove('open');
 }
 
 function fmtCr(v) {
