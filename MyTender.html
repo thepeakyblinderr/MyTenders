@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MyTenders</title>
     <style>
 /* ── ROOT ── */
@@ -783,6 +783,11 @@ input:focus, select:focus, textarea:focus {
 
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
+    /* Premium touch feel */
+    * { -webkit-tap-highlight-color: transparent; }
+    button, a, [onclick] { touch-action: manipulation; }
+    input, select, textarea { font-size: 16px !important; }
+
     .mob-header { display:flex; }
     .mob-overlay { display:none; }
     .app-shell.sidebar-open .mob-overlay { display:block; }
@@ -801,14 +806,13 @@ input:focus, select:focus, textarea:focus {
         padding:68px 14px 32px;
     }
 
-    /* Topbar: horizontal scroll, no wrap */
-    .main-topbar {
-        overflow-x:auto; flex-wrap:nowrap; gap:6px;
-        padding-bottom:4px; -webkit-overflow-scrolling:touch;
-        scrollbar-width:none;
-    }
-    .main-topbar::-webkit-scrollbar { display:none; }
+    /* Topbar: wrap on mobile so no horizontal scroll */
+    .main-topbar { flex-wrap:wrap; gap:6px; margin-bottom:14px; }
     .topbar-sep { display:none; }
+    .view-toggle { width:100%; }
+    .vt-btn { flex:1; text-align:center; padding:8px 12px; }
+    .topbar-filter { font-size:16px; padding:7px 10px; flex:1; min-width:calc(50% - 6px); max-width:none; border-radius:12px; }
+    .topbar-clear { flex-shrink:0; font-size:14px; padding:7px 14px; }
 
     /* Briefing: single column */
     .bf-grid { grid-template-columns:1fr; }
@@ -824,11 +828,12 @@ input:focus, select:focus, textarea:focus {
     .card-stages-row { gap:4px; }
     .stage-chip {
         font-size:10px; padding:2px 8px 2px 6px;
-        max-width:calc(50vw - 30px); overflow:hidden; text-overflow:ellipsis;
+        max-width:calc(100vw - 80px); overflow:hidden; text-overflow:ellipsis;
     }
-    .card-detail { padding:12px 14px; }
+    .card-detail { padding:12px 14px; overflow-x:hidden; }
     .card-detail-grid { grid-template-columns:1fr 1fr; gap:10px 14px; }
     .card-footer { padding:8px 0 4px; }
+    .cd-val { font-size:12px; word-break:break-word; }
 
     /* Two-column card → stack on mobile */
     .card-header { flex-wrap:wrap; }
