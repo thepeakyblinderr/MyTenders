@@ -27,7 +27,7 @@
     --shadow-md:   0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
     --radius:      14px;
     --radius-sm:   8px;
-    --sidebar-w:   224px;
+    --sidebar-w:   280px;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -71,20 +71,29 @@ input:focus, select:focus, textarea:focus {
 /* ── APP SHELL ── */
 .app-shell { display:flex; min-height:100vh; }
 
-/* ── SIDEBAR ── */
+/* ── SIDEBAR (universal drawer) ── */
 .sidebar {
     width: var(--sidebar-w); background:var(--sidebar);
     border-right: 1px solid var(--sep);
     position:fixed; top:0; left:0; bottom:0;
-    overflow-y:auto; z-index:50;
+    overflow-y:auto; z-index:150;
     display:flex; flex-direction:column;
+    transform:translateX(-100%);
+    transition:transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow:4px 0 24px rgba(0,0,0,.12);
 }
+.app-shell.sidebar-open .sidebar { transform:translateX(0); }
 .sb-brand {
-    padding:22px 18px 18px; border-bottom:1px solid var(--sep);
-    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    padding:16px 18px 14px; border-bottom:1px solid var(--sep);
+    display:flex; align-items:center; gap:8px; flex-shrink:0;
 }
-.sb-brand h1 { font-size:15px; font-weight:700; letter-spacing:-.3px; color:var(--text); }
-#sync-status { font-size:11px; color:var(--text-dim); }
+.sb-brand h1 { font-size:15px; font-weight:700; letter-spacing:-.3px; color:var(--text); flex:1; }
+.sb-close-btn {
+    background:none; border:1px solid var(--sep); border-radius:99px;
+    padding:3px 9px; font-size:11px; color:var(--text-dim);
+    cursor:pointer; font-family:inherit; flex-shrink:0; transition:all .15s;
+}
+.sb-close-btn:hover { border-color:var(--text-sub); color:var(--text); }
 
 .sb-sec { padding:16px 18px 12px; border-bottom:1px solid var(--sep); }
 .sb-sec-title {
@@ -156,43 +165,9 @@ input:focus, select:focus, textarea:focus {
 }
 .sb-btn-ghost:hover { background:var(--bg); color:var(--text); }
 
-/* ── STATS DRAWER ── */
-.stats-drawer {
-    position:fixed; top:0; right:0; bottom:0; width:288px;
-    background:var(--card); z-index:160; overflow-y:auto;
-    transform:translateX(100%); transition:transform .26s cubic-bezier(.4,0,.2,1);
-    box-shadow:-4px 0 28px rgba(0,0,0,.10); border-left:1px solid var(--sep);
-    display:flex; flex-direction:column;
-}
-.stats-drawer.open { transform:translateX(0); }
-.stats-overlay {
-    position:fixed; inset:0; background:rgba(0,0,0,.18); z-index:155;
-    display:none; -webkit-tap-highlight-color:transparent;
-}
-.stats-overlay.open { display:block; }
-.stats-drawer-head {
-    padding:20px 18px 14px; border-bottom:1px solid var(--sep);
-    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
-}
-.stats-drawer-title { font-size:13px; font-weight:700; color:var(--text); }
-.stats-drawer-close {
-    background:none; border:1px solid var(--sep); border-radius:99px;
-    padding:4px 10px; font-size:12px; color:var(--text-dim);
-    cursor:pointer; font-family:inherit; transition:all .15s;
-}
-.stats-drawer-close:hover { border-color:var(--text-sub); color:var(--text); }
-
-/* Stats button in topbar */
-.stats-open-btn {
-    padding:6px 14px; border:1px solid var(--sep); border-radius:99px;
-    background:var(--card); color:var(--text-sub); font-size:12px; font-weight:600;
-    cursor:pointer; font-family:inherit; box-shadow:var(--shadow-sm);
-    transition:all .15s; white-space:nowrap; flex-shrink:0;
-}
-.stats-open-btn:hover { border-color:var(--text-sub); color:var(--text); }
 
 /* ── MAIN CONTENT ── */
-.main-content { margin-left:var(--sidebar-w); flex:1; padding:24px 28px; min-height:100vh; }
+.main-content { margin-left:0; flex:1; padding:72px 28px 32px; min-height:100vh; }
 .main-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
 .search-wrap { flex:1; position:relative; }
 .search-wrap svg {
@@ -807,11 +782,11 @@ input:focus, select:focus, textarea:focus {
 }
 .bf-dismiss-btn:hover { border-color:var(--text-sub); color:var(--text); }
 
-/* ── MOBILE HEADER ── */
+/* ── APP HEADER (universal) ── */
 .mob-header {
-    display:none; position:fixed; top:0; left:0; right:0; z-index:80;
+    display:flex; position:fixed; top:0; left:0; right:0; z-index:80;
     height:52px; background:var(--card); border-bottom:1px solid var(--sep);
-    align-items:center; padding:0 14px; gap:10px;
+    align-items:center; padding:0 16px; gap:12px;
     box-shadow:var(--shadow-sm);
 }
 .mob-menu-btn {
@@ -826,11 +801,12 @@ input:focus, select:focus, textarea:focus {
     line-height:1; flex-shrink:0;
 }
 
-/* ── SIDEBAR OVERLAY ── */
+/* ── DRAWER OVERLAY ── */
 .mob-overlay {
-    display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:90;
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:145;
     -webkit-tap-highlight-color:transparent;
 }
+.app-shell.sidebar-open .mob-overlay { display:block; }
 
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
@@ -839,23 +815,8 @@ input:focus, select:focus, textarea:focus {
     button, a, [onclick] { touch-action: manipulation; }
     input, select, textarea { font-size: 16px !important; }
 
-    .mob-header { display:flex; }
-    .mob-overlay { display:none; }
-    .app-shell.sidebar-open .mob-overlay { display:block; }
-
-    /* Sidebar: hidden by default, slides in as drawer */
-    .sidebar {
-        transform:translateX(-100%);
-        transition:transform .25s cubic-bezier(.4,0,.2,1);
-        z-index:100; box-shadow:4px 0 24px rgba(0,0,0,.12);
-    }
-    .app-shell.sidebar-open .sidebar { transform:translateX(0); }
-
-    /* Main: full width, top padding for mobile header */
-    .main-content {
-        margin-left:0 !important;
-        padding:68px 14px 32px;
-    }
+    /* Main: compact padding on mobile */
+    .main-content { padding:68px 14px 32px; }
 
     /* Topbar: wrap on mobile so no horizontal scroll */
     .main-topbar { flex-wrap:wrap; gap:6px; margin-bottom:14px; }
@@ -920,9 +881,8 @@ input:focus, select:focus, textarea:focus {
     /* Sidebar stats */
     .sb-stat-num { font-size:18px; }
 
-    /* Stats drawer: full width on mobile */
-    .stats-drawer { width:100%; border-left:none; }
-    .stats-open-btn { display:none; } /* only show in mobile header */
+    /* Sidebar full width on mobile */
+    .sidebar { width:85%; max-width:320px; }
 }
     </style>
 </head>
@@ -964,26 +924,25 @@ input:focus, select:focus, textarea:focus {
     <div class="mob-header">
         <button class="mob-menu-btn" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
         <span class="mob-brand">📋 MyTenders</span>
-        <button class="mob-menu-btn" onclick="openStatsDrawer()" aria-label="Stats" style="font-size:15px;">📊</button>
+        <span id="sync-status" style="font-size:11px;color:var(--text-dim);"></span>
         <button class="mob-add-btn" onclick="openAdd()" aria-label="Add Tender">+</button>
     </div>
-    <!-- Sidebar overlay (mobile only) -->
     <div class="mob-overlay" onclick="toggleMobSidebar()"></div>
 
-    <!-- ── SIDEBAR ── -->
-    <!-- ── STATS DRAWER ── -->
-    <div class="stats-overlay" id="stats-overlay" onclick="closeStatsDrawer()"></div>
-    <div class="stats-drawer" id="stats-drawer">
-        <div class="stats-drawer-head">
-            <span class="stats-drawer-title">Stats</span>
-            <button class="stats-drawer-close" onclick="closeStatsDrawer()">✕ Close</button>
+    <!-- ── UNIFIED PANEL DRAWER ── -->
+    <aside class="sidebar">
+        <!-- Drawer header with close -->
+        <div class="sb-brand">
+            <h1>📋 MyTenders</h1>
+            <button class="sb-close-btn" onclick="toggleMobSidebar()" aria-label="Close">✕</button>
         </div>
-        <!-- Overview stats -->
+
+        <!-- Stats: Overview -->
         <div class="sb-sec">
             <div class="sb-sec-title">Overview</div>
             <div class="sb-stats-grid">
                 <div class="sb-stat">
-                    <span class="sb-stat-num c-num-blue" id="c-total">0</span>
+                    <span class="sb-stat-num" id="c-total">0</span>
                     <span class="sb-stat-lbl">Total</span>
                 </div>
                 <div class="sb-stat">
@@ -991,76 +950,44 @@ input:focus, select:focus, textarea:focus {
                     <span class="sb-stat-lbl">In Progress</span>
                 </div>
                 <div class="sb-stat">
-                    <span class="sb-stat-num c-num-green" id="c-awarded">0</span>
+                    <span class="sb-stat-num" id="c-awarded">0</span>
                     <span class="sb-stat-lbl">Awarded</span>
                     <span class="sb-stat-sub" id="c-awarded-cost"></span>
                 </div>
                 <div class="sb-stat">
-                    <span class="sb-stat-num c-num-red" id="c-cancelled">0</span>
+                    <span class="sb-stat-num" id="c-cancelled">0</span>
                     <span class="sb-stat-lbl">Cancelled</span>
                 </div>
-                <div class="sb-stat wide clickable" onclick="filterCritical();closeStatsDrawer();" title="Filter critical">
-                    <span class="sb-stat-num c-num-red" id="c-critical">0</span>
+                <div class="sb-stat wide clickable" onclick="filterCritical()" title="Filter critical">
+                    <span class="sb-stat-num" id="c-critical">0</span>
                     <span class="sb-stat-lbl">🚨 Critical</span>
                 </div>
             </div>
         </div>
         <div class="sb-sep"></div>
-        <!-- By Type -->
+
+        <!-- Stats: By Type -->
         <div class="sb-sec">
             <div class="sb-sec-title">By Type</div>
             <div class="sb-mini-grid">
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-arc">0</span>
-                    <span class="sb-mini-lbl">ARC</span>
-                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-arc-cost"></span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-onetime">0</span>
-                    <span class="sb-mini-lbl">One-Time</span>
-                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-onetime-cost"></span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-shutdown">0</span>
-                    <span class="sb-mini-lbl">Shutdown</span>
-                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-shutdown-cost"></span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-af">0</span>
-                    <span class="sb-mini-lbl">AF Budget</span>
-                    <span style="font-size:10px;color:var(--text-sub);display:block;" id="c-af-cost"></span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-gem">0</span>
-                    <span class="sb-mini-lbl">GEM</span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-etender">0</span>
-                    <span class="sb-mini-lbl">E-Tender</span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-physical">0</span>
-                    <span class="sb-mini-lbl">Physical</span>
-                </div>
-                <div class="sb-mini">
-                    <span class="sb-mini-num" id="c-leadavg">—</span>
-                    <span class="sb-mini-lbl">Avg Lead Days</span>
-                </div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-arc">0</span><span class="sb-mini-lbl">ARC</span><span style="font-size:10px;color:var(--text-sub);display:block;" id="c-arc-cost"></span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-onetime">0</span><span class="sb-mini-lbl">One-Time</span><span style="font-size:10px;color:var(--text-sub);display:block;" id="c-onetime-cost"></span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-shutdown">0</span><span class="sb-mini-lbl">Shutdown</span><span style="font-size:10px;color:var(--text-sub);display:block;" id="c-shutdown-cost"></span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-af">0</span><span class="sb-mini-lbl">AF Budget</span><span style="font-size:10px;color:var(--text-sub);display:block;" id="c-af-cost"></span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-gem">0</span><span class="sb-mini-lbl">GEM</span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-etender">0</span><span class="sb-mini-lbl">E-Tender</span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-physical">0</span><span class="sb-mini-lbl">Physical</span></div>
+                <div class="sb-mini"><span class="sb-mini-num" id="c-leadavg">—</span><span class="sb-mini-lbl">Avg Lead Days</span></div>
             </div>
         </div>
         <div class="sb-sep"></div>
-        <!-- Top Departments -->
+
+        <!-- Stats: Top Departments -->
         <div class="sb-sec">
             <div class="sb-sec-title">Top Departments</div>
             <div id="dept-rows"></div>
         </div>
-    </div>
-
-    <aside class="sidebar">
-        <div class="sb-brand">
-            <h1>📋 MyTenders</h1>
-            <span id="sync-status"></span>
-        </div>
+        <div class="sb-sep"></div>
 
         <!-- Filters -->
         <div class="sb-sec" style="padding-bottom:4px;">
@@ -1164,7 +1091,6 @@ input:focus, select:focus, textarea:focus {
                 <option value="">All Stages</option>
             </select>
             <button class="topbar-clear" onclick="clearFilters()">✕ Clear</button>
-            <button class="stats-open-btn" onclick="openStatsDrawer()">📊 Stats</button>
         </div>
 
         <!-- ── BRIEFING PANEL (default) ── -->
@@ -2171,14 +2097,6 @@ function togglePipelineStats() {
     icon.classList.toggle('open', open);
 }
 
-function openStatsDrawer() {
-    document.getElementById('stats-drawer').classList.add('open');
-    document.getElementById('stats-overlay').classList.add('open');
-}
-function closeStatsDrawer() {
-    document.getElementById('stats-drawer').classList.remove('open');
-    document.getElementById('stats-overlay').classList.remove('open');
-}
 
 function fmtCr(v) {
     if (!v) return '';
