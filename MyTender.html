@@ -21,8 +21,8 @@
     --red:         #ff3b30;
     --active:      #0f0f0f;
     --active-fg:   #ffffff;
-    --alert:       #c0180a;
-    --warn-clr:    #b86000;
+    --alert:       #b91c1c;
+    --warn-clr:    #854d0e;
     --shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.05);
     --shadow-md:   0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
     --radius:      14px;
@@ -217,9 +217,9 @@ input:focus, select:focus, textarea:focus {
     padding:14px 18px 12px; cursor:pointer; user-select:none;
 }
 .card-left { flex:1; min-width:0; }
-.card-title { font-size:14px; font-weight:700; color:var(--text); line-height:1.35; letter-spacing:-.1px; }
+.card-title { font-size:14px; font-weight:600; color:var(--text); line-height:1.35; letter-spacing:-.1px; }
 .card-refs { font-size:11px; color:var(--text-dim); margin-top:3px; font-weight:500; }
-.card-num { font-weight:700; color:var(--text-sub); margin-right:3px; }
+.card-num { font-weight:500; color:var(--text-dim); font-size:12px; margin-right:4px; }
 .card-meta { display:none; }
 .card-right { display:none; } /* replaced by .card-actions */
 .card-right .badge { display:none; }
@@ -234,15 +234,9 @@ input:focus, select:focus, textarea:focus {
 
 /* Far-right actions column */
 .card-actions {
-    flex-shrink:0; display:flex; flex-direction:column;
-    align-items:center; gap:6px; padding-top:3px;
+    flex-shrink:0; display:flex; align-items:flex-start; padding-top:2px;
 }
-.card-expand-btn {
-    background:none; border:1px solid var(--sep); border-radius:99px;
-    cursor:pointer; font-size:10px; color:var(--text-dim); padding:3px 9px; transition:all .15s;
-    font-family:inherit;
-}
-.card-expand-btn:hover { border-color:var(--text-sub); color:var(--text); }
+.card-expand-btn { display:none; }
 
 /* Card detail panel */
 .card-detail {
@@ -250,6 +244,7 @@ input:focus, select:focus, textarea:focus {
     background:#faf9f7; display:none;
 }
 .card-detail.open { display:block; }
+.tender-card.expanded { box-shadow:var(--shadow-md); }
 .card-detail-grid {
     display:grid; grid-template-columns:repeat(4,1fr); gap:12px 20px;
 }
@@ -318,7 +313,7 @@ input:focus, select:focus, textarea:focus {
     font-family:inherit;
 }
 .stage-add-btn:hover { border-color:var(--text-sub); color:var(--text); }
-.stage-chip-overdue { outline:2px solid var(--alert); outline-offset:1px; }
+.stage-chip-overdue { border-color:rgba(185,28,28,.35); background:rgba(185,28,28,.04); }
 .date-add-btn {
     font-size:12px; line-height:1; padding:2px 8px;
     border:1px dashed var(--sep); border-radius:99px;
@@ -671,6 +666,28 @@ input:focus, select:focus, textarea:focus {
 }
 .topbar-clear:hover { border-color:var(--text-sub); color:var(--text); }
 
+/* ── PRIORITY FEED ── */
+.feed-card {
+    background:var(--card); border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); overflow:hidden; margin-bottom:12px;
+}
+.feed-head {
+    padding:14px 18px 11px; border-bottom:1px solid var(--sep);
+    display:flex; align-items:center; justify-content:space-between;
+}
+.feed-head-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-dim); }
+.feed-head-count { font-size:11px; color:var(--text-dim); }
+.pipeline-toggle {
+    display:flex; align-items:center; justify-content:space-between; width:100%;
+    background:none; border:1px solid var(--sep); border-radius:var(--radius);
+    padding:11px 16px; font-size:12px; font-weight:600; color:var(--text-sub);
+    cursor:pointer; font-family:inherit; margin-top:4px; transition:all .15s;
+}
+.pipeline-toggle:hover { border-color:var(--text-sub); color:var(--text); }
+.pipeline-icon { font-size:10px; color:var(--text-dim); transition:transform .2s; display:inline-block; }
+.pipeline-icon.open { transform:rotate(90deg); }
+#pipeline-stats { margin-top:10px; }
+
 .bf-grid {
     display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:16px;
 }
@@ -686,8 +703,7 @@ input:focus, select:focus, textarea:focus {
 .bf-head-count {
     font-size:11px; color:var(--text-dim);
 }
-.bf-body { max-height:420px; overflow-y:auto; }
-#bf-stuck, #bf-workload { max-height:260px; }
+.bf-body { max-height:340px; overflow-y:auto; }
 .bf-row {
     display:flex; align-items:center; gap:10px; padding:11px 18px;
     border-bottom:1px solid var(--sep); cursor:pointer; transition:background .1s;
@@ -816,7 +832,7 @@ input:focus, select:focus, textarea:focus {
 
     /* Briefing: single column */
     .bf-grid { grid-template-columns:1fr; }
-    .bf-body, #bf-stuck, #bf-workload { max-height:280px; }
+    .bf-body { max-height:280px; }
     .bf-head { padding:11px 14px 9px; }
     .bf-row { padding:9px 14px; gap:8px; }
 
@@ -1110,7 +1126,7 @@ input:focus, select:focus, textarea:focus {
 
         <!-- ── BRIEFING PANEL (default) ── -->
         <div id="briefing-panel">
-            <!-- Today's Actions strip -->
+            <!-- Today's flagged tenders strip -->
             <div class="today-strip" id="today-strip" style="display:none;">
                 <div class="today-strip-head">
                     <span class="today-strip-title">🚩 Today's Actions</span>
@@ -1118,34 +1134,46 @@ input:focus, select:focus, textarea:focus {
                 </div>
                 <div class="today-strip-rows" id="today-strip-rows"></div>
             </div>
-            <div class="bf-grid">
-                <div class="bf-card">
-                    <div class="bf-head">
-                        <span class="bf-head-title">📅 Key Dates</span>
-                        <span class="bf-head-count" id="bf-dates-count"></span>
-                    </div>
-                    <div class="bf-body" id="bf-dates"></div>
+
+            <!-- Needs Action feed: missed dates + stuck tenders -->
+            <div class="feed-card" id="feed-action-card" style="display:none;">
+                <div class="feed-head">
+                    <span class="feed-head-title">Needs Action</span>
+                    <span class="feed-head-count" id="feed-action-count"></span>
                 </div>
-                <div class="bf-card">
-                    <div class="bf-head">
-                        <span class="bf-head-title">🗂 Stage Congestion</span>
-                        <span class="bf-head-count" id="bf-stage-count"></span>
-                    </div>
-                    <div class="bf-body" id="bf-stages"></div>
+                <div id="feed-action-body"></div>
+            </div>
+
+            <!-- Upcoming feed: next 7 days key dates -->
+            <div class="feed-card" id="feed-upcoming-card">
+                <div class="feed-head">
+                    <span class="feed-head-title">Upcoming · 7 days</span>
+                    <span class="feed-head-count" id="feed-upcoming-count"></span>
                 </div>
-                <div class="bf-card">
-                    <div class="bf-head">
-                        <span class="bf-head-title">⏱ Stuck Tenders</span>
-                        <span class="bf-head-count" id="bf-stuck-count"></span>
+                <div id="feed-upcoming-body"></div>
+            </div>
+
+            <!-- Pipeline stats: collapsible -->
+            <button class="pipeline-toggle" onclick="togglePipelineStats()">
+                Pipeline Overview
+                <span class="pipeline-icon" id="pipeline-icon">▸</span>
+            </button>
+            <div id="pipeline-stats" style="display:none;">
+                <div class="bf-grid">
+                    <div class="bf-card">
+                        <div class="bf-head">
+                            <span class="bf-head-title">Stage Congestion</span>
+                            <span class="bf-head-count" id="bf-stage-count"></span>
+                        </div>
+                        <div class="bf-body" id="bf-stages"></div>
                     </div>
-                    <div class="bf-body" id="bf-stuck"></div>
-                </div>
-                <div class="bf-card">
-                    <div class="bf-head">
-                        <span class="bf-head-title">👤 Workload</span>
-                        <span class="bf-head-count" id="bf-workload-count"></span>
+                    <div class="bf-card">
+                        <div class="bf-head">
+                            <span class="bf-head-title">Workload</span>
+                            <span class="bf-head-count" id="bf-workload-count"></span>
+                        </div>
+                        <div class="bf-body" id="bf-workload"></div>
                     </div>
-                    <div class="bf-body" id="bf-workload"></div>
                 </div>
             </div>
         </div>
@@ -1898,7 +1926,7 @@ function renderBriefing() {
         }).join('');
     }
 
-    // ── 1. Stage Congestion ──────────────────────────────
+    // ── 1. Stage Congestion (pipeline stats panel) ───────
     var stageMap = {};
     STAGES.forEach(function(s) { stageMap[s.id] = []; });
     tenders.forEach(function(t) {
@@ -1926,43 +1954,7 @@ function renderBriefing() {
         }).join('')
         : '<div class="bf-empty">No active pipeline stages</div>';
 
-    // ── 2. Stuck Tenders (>14 days in same stage or action) ─
-    var stuckList = [];
-    tenders.forEach(function(t) {
-        normalizeStages(t.tenderStages || []).forEach(function(st) {
-            var days = stageDays(st.enteredAt);
-            if (days === null || days < OVERDUE_DAYS) return;
-            var info = STAGES.find(function(x) { return x.id === st.id; });
-            if (!info) return;
-            stuckList.push({ t: t, info: info, days: days, assignedTo: st.assignedTo });
-        });
-        (t.tenderActions || []).forEach(function(a) {
-            if (!a.enteredAt) return;
-            var days = Math.round((Date.now() - a.enteredAt) / 86400000);
-            if (days < OVERDUE_DAYS) return;
-            stuckList.push({ t: t, info: { label: '📝 ' + a.text, color: '#6e6e73' }, days: days, assignedTo: a.assignedTo });
-        });
-    });
-    stuckList.sort(function(a, b) { return b.days - a.days; });
-
-    document.getElementById('bf-stuck-count').textContent = stuckList.length + (stuckList.length === 1 ? ' tender' : ' tenders');
-    document.getElementById('bf-stuck').innerHTML = stuckList.length
-        ? stuckList.map(function(x) {
-            var cls = x.days >= 28 ? 'stuck-crit' : x.days >= 21 ? 'stuck-warn' : 'stuck-ok';
-            var dot = x.info.color || 'var(--primary)';
-            var sub = esc(x.info.label) + (x.assignedTo ? ' · ' + esc(x.assignedTo) : '');
-            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
-                '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
-                '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
-                    '<div class="bf-row-sub">' + sub + '</div>' +
-                '</div>' +
-                '<span class="bf-badge ' + cls + '">' + x.days + 'd</span>' +
-                '</div>';
-        }).join('')
-        : '<div class="bf-empty">✅ Nothing stuck &gt;' + OVERDUE_DAYS + ' days</div>';
-
-    // ── 3. Key Dates (missed last 7d + upcoming 7d) ──────
+    // ── 2. Key dates + stuck → priority feed ─────────────
     var DATE_FIELDS = [
         { key: 'saleEndDate',     label: 'Sale End'    },
         { key: 'preBidDate',      label: 'Pre-Bid'     },
@@ -1973,57 +1965,99 @@ function renderBriefing() {
         { key: 'pboDate',         label: 'PBO'         },
     ];
     var past7Str = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
-    var keyDateItems = [];
+
+    var needsActionItems = []; // missed dates + stuck tenders
+    var upcomingItems    = []; // upcoming dates (dl >= 0)
+
+    // Missed key dates
     tenders.forEach(function(t) {
         if (t.status === 'Awarded' || t.status === 'Cancelled') return;
         DATE_FIELDS.forEach(function(f) {
             var d = t[f.key];
-            if (!d || d < past7Str || d > in7Str) return;
+            if (!d) return;
             var dl = Math.round((new Date(d) - new Date(todayStr)) / 86400000);
-            var missed = dl < 0;
-            if (missed && dismissedDateKey(t.id, f.key, d)) return; // skip acknowledged
-            keyDateItems.push({ t: t, label: f.label, date: d, dl: dl, missed: missed, fkey: f.key });
+            if (dl < 0 && d >= past7Str) {
+                if (!dismissedDateKey(t.id, f.key, d))
+                    needsActionItems.push({ kind:'date', t:t, label:f.label, date:d, dl:dl, fkey:f.key });
+            } else if (dl >= 0 && d <= in7Str) {
+                upcomingItems.push({ kind:'date', t:t, label:f.label, date:d, dl:dl, fkey:f.key });
+            }
         });
     });
-    // Sort: missed first (most recent first), then upcoming (soonest first)
-    keyDateItems.sort(function(a, b) {
-        if (a.missed && !b.missed) return -1;
-        if (!a.missed && b.missed) return 1;
-        return a.dl - b.dl;
+
+    // Stuck tenders → Needs Action
+    tenders.forEach(function(t) {
+        normalizeStages(t.tenderStages || []).forEach(function(st) {
+            var days = stageDays(st.enteredAt);
+            if (days === null || days < OVERDUE_DAYS) return;
+            var info = STAGES.find(function(x) { return x.id === st.id; });
+            if (!info) return;
+            needsActionItems.push({ kind:'stuck', t:t, info:info, days:days, assignedTo:st.assignedTo });
+        });
+        (t.tenderActions || []).forEach(function(a) {
+            if (!a.enteredAt) return;
+            var days = Math.round((Date.now() - a.enteredAt) / 86400000);
+            if (days < OVERDUE_DAYS) return;
+            needsActionItems.push({ kind:'stuck', t:t, info:{ label:a.text, color:'#6e6e73' }, days:days, assignedTo:a.assignedTo });
+        });
     });
 
-    var missedCount = keyDateItems.filter(function(x) { return x.missed; }).length;
-    var upcomingCount = keyDateItems.length - missedCount;
-    var countParts = [];
-    if (missedCount) countParts.push(missedCount + ' missed');
-    if (upcomingCount) countParts.push(upcomingCount + ' upcoming');
-    document.getElementById('bf-dates-count').textContent = countParts.join(', ') || '0 events';
-    document.getElementById('bf-dates').innerHTML = keyDateItems.length
-        ? keyDateItems.map(function(x) {
-            var cls, when;
-            if (x.dl < 0) {
-                cls = 'date-today';
-                when = Math.abs(x.dl) + 'd ago';
-            } else if (x.dl === 0) {
-                cls = 'date-today'; when = 'TODAY';
-            } else if (x.dl <= 2) {
-                cls = 'date-soon'; when = x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
-            } else {
-                cls = 'date-week'; when = 'in ' + x.dl + 'd';
-            }
-            var dismissBtn = x.missed
-                ? '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>'
-                : '';
+    // Sort: missed dates by recency (dl desc = most recent first), stuck by days (desc)
+    needsActionItems.sort(function(a, b) {
+        var scoreA = a.kind === 'date' ? 0 : 1;
+        var scoreB = b.kind === 'date' ? 0 : 1;
+        if (scoreA !== scoreB) return scoreA - scoreB;
+        if (a.kind === 'date') return a.dl - b.dl; // most recent past first
+        return b.days - a.days; // most stuck first
+    });
+    upcomingItems.sort(function(a, b) { return a.dl - b.dl; });
+
+    // Render Needs Action feed
+    var actionCard = document.getElementById('feed-action-card');
+    actionCard.style.display = needsActionItems.length ? '' : 'none';
+    document.getElementById('feed-action-count').textContent = needsActionItems.length + ' item' + (needsActionItems.length === 1 ? '' : 's');
+    document.getElementById('feed-action-body').innerHTML = needsActionItems.map(function(x) {
+        if (x.kind === 'date') {
+            var when = Math.abs(x.dl) === 0 ? 'TODAY' : Math.abs(x.dl) + 'd ago';
+            var dismissBtn = '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>';
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + (x.missed ? '<span style="font-size:10px;margin-right:3px;">⚠</span>' : '') + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
+                '</div>' +
+                '<span class="bf-badge date-today">' + when + '</span>' +
+                dismissBtn + '</div>';
+        } else {
+            var dot = x.info.color || 'var(--primary)';
+            var sub = esc(x.info.label) + (x.assignedTo ? ' · ' + esc(x.assignedTo) : '');
+            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
+                '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
+                '<div class="bf-row-left">' +
+                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-sub">' + sub + '</div>' +
+                '</div>' +
+                '<span class="bf-badge stuck-warn">' + x.days + 'd</span>' +
+                '</div>';
+        }
+    }).join('');
+
+    // Render Upcoming feed
+    document.getElementById('feed-upcoming-count').textContent = upcomingItems.length
+        ? upcomingItems.length + ' event' + (upcomingItems.length === 1 ? '' : 's')
+        : '';
+    document.getElementById('feed-upcoming-body').innerHTML = upcomingItems.length
+        ? upcomingItems.map(function(x) {
+            var cls = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
+            var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
+                '<div class="bf-row-left">' +
+                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge ' + cls + '">' + when + '</span>' +
-                dismissBtn +
                 '</div>';
         }).join('')
-        : '<div class="bf-empty">✅ No key dates in ±7 days</div>';
+        : '<div class="bf-empty">✅ Nothing in the next 7 days</div>';
 
     // ── 4. Workload ──────────────────────────────────────
     var wlMap = {};
@@ -2057,7 +2091,7 @@ function renderBriefing() {
                 var stageColor = x.info ? x.info.color : '#888';
                 var daysHtml = x.days !== null
                     ? '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;margin-left:4px;' +
-                      (x.days > OVERDUE_DAYS ? 'background:rgba(192,24,10,.10);color:var(--alert);' : 'background:var(--bg);color:var(--text-dim);') +
+                      (x.days > OVERDUE_DAYS ? 'background:rgba(185,28,28,.08);color:var(--alert);' : 'background:var(--bg);color:var(--text-dim);') +
                       '">' + x.days + 'd</span>'
                     : '';
                 return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
@@ -2086,13 +2120,12 @@ function renderBriefing() {
         : '<div class="bf-empty">No stages assigned yet<br><span style="font-size:11px;margin-top:4px;display:block;">Use the + button on a stage chip to assign someone</span></div>';
 }
 
-function toggleStats() {
-    const btn = document.getElementById('stats-toggle-btn');
-    const sec = document.getElementById('stats-extra');
-    const open = sec.classList.toggle('open');
-    btn.classList.toggle('open', open);
-    btn.querySelector('.arrow').textContent = open ? '▲' : '▼';
-    btn.childNodes[1].textContent = (open ? ' Less Stats' : ' More Stats');
+function togglePipelineStats() {
+    var panel = document.getElementById('pipeline-stats');
+    var icon  = document.getElementById('pipeline-icon');
+    var open  = panel.style.display === 'none';
+    panel.style.display = open ? '' : 'none';
+    icon.classList.toggle('open', open);
 }
 
 function fmtCr(v) {
@@ -2276,7 +2309,6 @@ function renderTable(rows) {
                 </div>
                 <div class="card-actions">
                     <button class="card-flag-btn${isFlaggedToday ? ' flagged' : ''}" title="${isFlaggedToday ? 'Remove today flag' : 'Flag for today'}" onclick="event.stopPropagation();toggleFlag('${t.id}')">🚩</button>
-                    <button class="card-expand-btn" id="expand-${t.id}">▶</button>
                 </div>
             </div>
             <div class="card-detail" id="detail-${t.id}">
@@ -2303,10 +2335,10 @@ function renderTable(rows) {
 
 function toggleDetailRow(id) {
     const panel = document.getElementById('detail-' + id);
-    const btn = document.getElementById('expand-' + id);
     if (!panel) return;
     const open = panel.classList.toggle('open');
-    if (btn) btn.textContent = open ? '▼' : '▶';
+    const card = panel.closest('.tender-card');
+    if (card) card.classList.toggle('expanded', open);
 }
 
 function openCard(tenderId) {
