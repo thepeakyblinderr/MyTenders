@@ -338,33 +338,53 @@ input:focus, select:focus, textarea:focus {
     position:fixed; z-index:9999;
     background:var(--card); border:1px solid var(--sep);
     border-radius:var(--radius); box-shadow:var(--shadow-md);
-    width:270px; display:flex; flex-direction:column; overflow:hidden;
+    width:300px; display:flex; flex-direction:column; overflow:hidden;
 }
 .date-popover-head {
-    padding:10px 14px 8px; border-bottom:1px solid var(--sep);
-    background:var(--bg); font-size:10px; font-weight:600;
-    text-transform:uppercase; letter-spacing:.07em; color:var(--text-dim); flex-shrink:0;
+    padding:10px 14px 9px; border-bottom:1px solid var(--sep);
+    background:var(--bg); flex-shrink:0;
+    display:flex; align-items:center; gap:8px;
 }
+.date-popover-head-info { flex:1; min-width:0; }
+.date-popover-head-label {
+    font-size:10px; font-weight:600; text-transform:uppercase;
+    letter-spacing:.07em; color:var(--text-dim);
+}
+.date-popover-head-name {
+    font-size:12px; font-weight:600; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px;
+}
+.date-popover-close {
+    background:none; border:none; padding:2px 6px; font-size:16px;
+    color:var(--text-dim); cursor:pointer; flex-shrink:0; line-height:1; border-radius:6px;
+}
+.date-popover-close:hover { background:var(--sep); }
 .date-popover-list { overflow-y:auto; }
 .date-popover-row {
     display:flex; align-items:center; gap:8px;
-    padding:8px 13px; border-bottom:1px solid #f1f3f4;
+    padding:8px 13px; border-bottom:1px solid var(--sep);
 }
 .date-popover-row:last-child { border-bottom:none; }
 .date-popover-lbl {
-    font-size:12px; color:var(--text-sub); width:82px; flex-shrink:0; font-weight:500;
+    font-size:12px; color:var(--text-sub); width:76px; flex-shrink:0; font-weight:500;
 }
 .date-popover-input {
-    flex:1; padding:4px 7px; font-size:12px;
+    flex:1; min-width:0; padding:4px 6px; font-size:12px;
     border:1px solid var(--sep); border-radius:6px;
-    background:#fff; color:var(--text);
+    background:var(--card); color:var(--text);
 }
-.date-popover-input:focus { border-color:var(--primary); }
+.date-popover-input:focus { border-color:var(--primary); outline:none; }
 .date-popover-clear {
-    padding:0 5px; background:none; border:none; color:var(--text-dim);
-    cursor:pointer; font-size:14px; flex-shrink:0; line-height:1;
+    padding:0 4px; background:none; border:none; color:var(--text-dim);
+    cursor:pointer; font-size:16px; flex-shrink:0; line-height:1; width:22px; text-align:center;
 }
-.date-popover-clear:hover { color:var(--red); }
+.date-popover-clear:hover { color:var(--alert); }
+/* Dim overlay for mobile bottom-sheet */
+.date-popover-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:9998;
+    -webkit-tap-highlight-color:transparent;
+}
+.date-popover-overlay.open { display:block; }
 
 /* Stage popover */
 .stage-popover {
@@ -874,10 +894,18 @@ input:focus, select:focus, textarea:focus {
     /* Key dates bar */
     #key-dates-bar { padding:10px 14px; }
 
-    /* Popovers: full width */
-    .stage-popover, .date-popover {
-        width:calc(100vw - 28px); left:14px !important;
+    /* Stage popover: full width */
+    .stage-popover { width:calc(100vw - 28px); left:14px !important; }
+    /* Date picker: bottom sheet on mobile */
+    .date-popover {
+        position:fixed !important;
+        bottom:0 !important; left:0 !important; right:0 !important; top:auto !important;
+        width:100% !important; max-height:80vh;
+        border-radius:16px 16px 0 0;
+        box-shadow:0 -8px 32px rgba(0,0,0,.18);
     }
+    .date-popover-input { font-size:16px !important; padding:6px 8px; }
+    .date-popover-row { padding:10px 16px; }
 
     /* Sidebar stats */
     .sb-stat-num { font-size:18px; }
@@ -1438,8 +1466,15 @@ input:focus, select:focus, textarea:focus {
 </div>
 
 <!-- ═══ DATE PICKER POPOVER ═══ -->
+<div id="date-popover-overlay" class="date-popover-overlay" onclick="closeDatePicker()"></div>
 <div id="date-popover" class="date-popover" style="display:none;">
-    <div class="date-popover-head">📅 Key Dates</div>
+    <div class="date-popover-head">
+        <div class="date-popover-head-info">
+            <div class="date-popover-head-label">📅 Key Dates</div>
+            <div class="date-popover-head-name" id="date-popover-head-name"></div>
+        </div>
+        <button class="date-popover-close" onclick="closeDatePicker()" aria-label="Close">✕</button>
+    </div>
     <div class="date-popover-list" id="date-popover-list"></div>
 </div>
 
@@ -1885,9 +1920,12 @@ function renderBriefing() {
             }).filter(Boolean).join(', ');
             var actionSub = (t.tenderActions || []).map(function(a) { return a.text; }).join(', ');
             var sub = [stageSub, actionSub].filter(Boolean).join(' · ') || t.department || '';
+            var tNum = t.tenderNumber || t.enividaNumber || '';
             return '<div class="today-strip-row" onclick="openCard(\'' + t.id + '\')">' +
                 '<div style="flex:1;min-width:0;">' +
-                    '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.nameOfWork) + '</div>' +
+                    '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                        (tNum ? '<span style="font-size:11px;font-weight:500;color:var(--text-dim);margin-right:5px;">' + esc(tNum) + '</span>' : '') +
+                        esc(t.nameOfWork) + '</div>' +
                     (sub ? '<div style="font-size:11px;color:var(--text-sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(sub) + '</div>' : '') +
                 '</div>' +
                 '<button style="padding:3px 9px;border:1px solid rgba(255,149,0,.4);border-radius:6px;background:transparent;color:#a05e00;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:inherit;" onclick="event.stopPropagation();toggleFlag(\'' + t.id + '\')" title="Remove flag">✓ Done</button>' +
@@ -1986,12 +2024,14 @@ function renderBriefing() {
     actionCard.style.display = needsActionItems.length ? '' : 'none';
     document.getElementById('feed-action-count').textContent = needsActionItems.length + ' item' + (needsActionItems.length === 1 ? '' : 's');
     document.getElementById('feed-action-body').innerHTML = needsActionItems.map(function(x) {
+        var xNum = x.t.tenderNumber || x.t.enividaNumber || '';
+        var xNumHtml = xNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;">' + esc(xNum) + '</span>' : '';
         if (x.kind === 'date') {
             var when = Math.abs(x.dl) === 0 ? 'TODAY' : Math.abs(x.dl) + 'd ago';
             var dismissBtn = '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>';
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge date-today">' + when + '</span>' +
@@ -2002,7 +2042,7 @@ function renderBriefing() {
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + sub + '</div>' +
                 '</div>' +
                 '<span class="bf-badge stuck-warn">' + x.days + 'd</span>' +
@@ -2018,9 +2058,11 @@ function renderBriefing() {
         ? upcomingItems.map(function(x) {
             var cls = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
             var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+            var uNum = x.t.tenderNumber || x.t.enividaNumber || '';
+            var uNumHtml = uNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;">' + esc(uNum) + '</span>' : '';
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + uNumHtml + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge ' + cls + '">' + when + '</span>' +
@@ -2063,10 +2105,13 @@ function renderBriefing() {
                       (x.days > OVERDUE_DAYS ? 'background:rgba(185,28,28,.08);color:var(--alert);' : 'background:var(--bg);color:var(--text-dim);') +
                       '">' + x.days + 'd</span>'
                     : '';
+                var wNum = x.t.tenderNumber || x.t.enividaNumber || '';
+                var wNumHtml = wNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;flex-shrink:0;">' + esc(wNum) + '</span>' : '';
                 return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
                     'border-bottom:1px solid var(--sep);cursor:pointer;transition:background .12s;" ' +
                     'onclick="openCard(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
                     '<span style="width:7px;height:7px;border-radius:50%;background:' + stageColor + ';flex-shrink:0;"></span>' +
+                    wNumHtml +
                     '<span style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
                         esc(x.t.nameOfWork) +
                     '</span>' +
@@ -2464,20 +2509,33 @@ function openDatePicker(tenderId, btn) {
     _datePickerTenderId = tenderId;
     renderDatePickerList();
     pop.style.display = 'flex';
-    const rect = btn.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    pop.style.top = 'auto'; pop.style.bottom = 'auto';
-    if (spaceBelow >= 280) {
-        pop.style.top = (rect.bottom + 6) + 'px';
+    if (window.innerWidth <= 768) {
+        // Bottom sheet — no position calculation; CSS handles it
+        pop.style.top = 'auto'; pop.style.bottom = '0';
+        pop.style.left = '0'; pop.style.right = '0';
+        document.getElementById('date-popover-overlay').classList.add('open');
     } else {
-        pop.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+        const rect = btn.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        pop.style.top = 'auto'; pop.style.bottom = 'auto'; pop.style.right = 'auto';
+        if (spaceBelow >= 300) {
+            pop.style.top = (rect.bottom + 6) + 'px';
+        } else {
+            pop.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+        }
+        const leftEdge = Math.min(rect.left, window.innerWidth - 308);
+        pop.style.left = Math.max(4, leftEdge) + 'px';
     }
-    const leftEdge = Math.min(rect.left, window.innerWidth - 286);
-    pop.style.left = Math.max(4, leftEdge) + 'px';
 }
 
 function renderDatePickerList() {
     const t = tenders.find(x => x.id === _datePickerTenderId);
+    // Update header to show which tender we're editing
+    const nameEl = document.getElementById('date-popover-head-name');
+    if (nameEl && t) {
+        const num = t.tenderNumber || t.enividaNumber || '';
+        nameEl.textContent = (num ? num + ' · ' : '') + t.nameOfWork;
+    }
     const todayStr = new Date().toISOString().slice(0, 10);
     document.getElementById('date-popover-list').innerHTML = DATE_PICKER_FIELDS.map(f => {
         const val = (t && t[f.key]) || '';
@@ -2513,6 +2571,7 @@ async function saveDateField(fieldKey, value) {
 
 function closeDatePicker() {
     document.getElementById('date-popover').style.display = 'none';
+    document.getElementById('date-popover-overlay').classList.remove('open');
     _datePickerTenderId = null;
 }
 
