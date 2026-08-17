@@ -1885,9 +1885,12 @@ function renderBriefing() {
             }).filter(Boolean).join(', ');
             var actionSub = (t.tenderActions || []).map(function(a) { return a.text; }).join(', ');
             var sub = [stageSub, actionSub].filter(Boolean).join(' · ') || t.department || '';
+            var tNum = t.tenderNumber || t.enividaNumber || '';
             return '<div class="today-strip-row" onclick="openCard(\'' + t.id + '\')">' +
                 '<div style="flex:1;min-width:0;">' +
-                    '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.nameOfWork) + '</div>' +
+                    '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                        (tNum ? '<span style="font-size:11px;font-weight:500;color:var(--text-dim);margin-right:5px;">' + esc(tNum) + '</span>' : '') +
+                        esc(t.nameOfWork) + '</div>' +
                     (sub ? '<div style="font-size:11px;color:var(--text-sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(sub) + '</div>' : '') +
                 '</div>' +
                 '<button style="padding:3px 9px;border:1px solid rgba(255,149,0,.4);border-radius:6px;background:transparent;color:#a05e00;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;font-family:inherit;" onclick="event.stopPropagation();toggleFlag(\'' + t.id + '\')" title="Remove flag">✓ Done</button>' +
@@ -1986,12 +1989,14 @@ function renderBriefing() {
     actionCard.style.display = needsActionItems.length ? '' : 'none';
     document.getElementById('feed-action-count').textContent = needsActionItems.length + ' item' + (needsActionItems.length === 1 ? '' : 's');
     document.getElementById('feed-action-body').innerHTML = needsActionItems.map(function(x) {
+        var xNum = x.t.tenderNumber || x.t.enividaNumber || '';
+        var xNumHtml = xNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;">' + esc(xNum) + '</span>' : '';
         if (x.kind === 'date') {
             var when = Math.abs(x.dl) === 0 ? 'TODAY' : Math.abs(x.dl) + 'd ago';
             var dismissBtn = '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>';
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge date-today">' + when + '</span>' +
@@ -2002,7 +2007,7 @@ function renderBriefing() {
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + sub + '</div>' +
                 '</div>' +
                 '<span class="bf-badge stuck-warn">' + x.days + 'd</span>' +
@@ -2018,9 +2023,11 @@ function renderBriefing() {
         ? upcomingItems.map(function(x) {
             var cls = x.dl === 0 ? 'date-today' : x.dl <= 2 ? 'date-soon' : 'date-week';
             var when = x.dl === 0 ? 'TODAY' : x.dl === 1 ? 'Tomorrow' : 'in ' + x.dl + 'd';
+            var uNum = x.t.tenderNumber || x.t.enividaNumber || '';
+            var uNumHtml = uNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;">' + esc(uNum) + '</span>' : '';
             return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
                 '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + esc(x.t.nameOfWork) + '</div>' +
+                    '<div class="bf-row-title">' + uNumHtml + esc(x.t.nameOfWork) + '</div>' +
                     '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
                 '</div>' +
                 '<span class="bf-badge ' + cls + '">' + when + '</span>' +
@@ -2063,10 +2070,13 @@ function renderBriefing() {
                       (x.days > OVERDUE_DAYS ? 'background:rgba(185,28,28,.08);color:var(--alert);' : 'background:var(--bg);color:var(--text-dim);') +
                       '">' + x.days + 'd</span>'
                     : '';
+                var wNum = x.t.tenderNumber || x.t.enividaNumber || '';
+                var wNumHtml = wNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;flex-shrink:0;">' + esc(wNum) + '</span>' : '';
                 return '<div style="display:flex;align-items:center;gap:7px;padding:6px 14px 6px 32px;' +
                     'border-bottom:1px solid var(--sep);cursor:pointer;transition:background .12s;" ' +
                     'onclick="openCard(\'' + x.t.id + '\')" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'+
                     '<span style="width:7px;height:7px;border-radius:50%;background:' + stageColor + ';flex-shrink:0;"></span>' +
+                    wNumHtml +
                     '<span style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
                         esc(x.t.nameOfWork) +
                     '</span>' +
