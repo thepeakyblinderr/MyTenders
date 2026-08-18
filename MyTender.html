@@ -1992,31 +1992,8 @@ function renderBriefing() {
         });
     });
 
-    // Stuck tenders → Needs Action
-    tenders.forEach(function(t) {
-        normalizeStages(t.tenderStages || []).forEach(function(st) {
-            var days = stageDays(st.enteredAt);
-            if (days === null || days < OVERDUE_DAYS) return;
-            var info = STAGES.find(function(x) { return x.id === st.id; });
-            if (!info) return;
-            needsActionItems.push({ kind:'stuck', t:t, info:info, days:days, assignedTo:st.assignedTo });
-        });
-        (t.tenderActions || []).forEach(function(a) {
-            if (!a.enteredAt) return;
-            var days = Math.round((Date.now() - a.enteredAt) / 86400000);
-            if (days < OVERDUE_DAYS) return;
-            needsActionItems.push({ kind:'stuck', t:t, info:{ label:a.text, color:'#6e6e73' }, days:days, assignedTo:a.assignedTo });
-        });
-    });
-
-    // Sort: missed dates by recency (dl desc = most recent first), stuck by days (desc)
-    needsActionItems.sort(function(a, b) {
-        var scoreA = a.kind === 'date' ? 0 : 1;
-        var scoreB = b.kind === 'date' ? 0 : 1;
-        if (scoreA !== scoreB) return scoreA - scoreB;
-        if (a.kind === 'date') return a.dl - b.dl; // most recent past first
-        return b.days - a.days; // most stuck first
-    });
+    // Sort by recency (most recent past date first)
+    needsActionItems.sort(function(a, b) { return a.dl - b.dl; });
     upcomingItems.sort(function(a, b) { return a.dl - b.dl; });
 
     // Render Needs Action feed
@@ -2026,28 +2003,15 @@ function renderBriefing() {
     document.getElementById('feed-action-body').innerHTML = needsActionItems.map(function(x) {
         var xNum = x.t.tenderNumber || x.t.enividaNumber || '';
         var xNumHtml = xNum ? '<span style="font-size:10px;font-weight:500;color:var(--text-dim);margin-right:4px;">' + esc(xNum) + '</span>' : '';
-        if (x.kind === 'date') {
-            var when = Math.abs(x.dl) === 0 ? 'TODAY' : Math.abs(x.dl) + 'd ago';
-            var dismissBtn = '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>';
-            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
-                '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
-                    '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
-                '</div>' +
-                '<span class="bf-badge date-today">' + when + '</span>' +
-                dismissBtn + '</div>';
-        } else {
-            var dot = x.info.color || 'var(--primary)';
-            var sub = esc(x.info.label) + (x.assignedTo ? ' · ' + esc(x.assignedTo) : '');
-            return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
-                '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;display:inline-block;"></span>' +
-                '<div class="bf-row-left">' +
-                    '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
-                    '<div class="bf-row-sub">' + sub + '</div>' +
-                '</div>' +
-                '<span class="bf-badge stuck-warn">' + x.days + 'd</span>' +
-                '</div>';
-        }
+        var when = Math.abs(x.dl) === 0 ? 'TODAY' : Math.abs(x.dl) + 'd ago';
+        var dismissBtn = '<button class="bf-dismiss-btn" title="Mark as handled" onclick="event.stopPropagation();dismissDate(\'' + x.t.id + '\',\'' + x.fkey + '\',\'' + x.date + '\')">✓</button>';
+        return '<div class="bf-row" onclick="openCard(\'' + x.t.id + '\')">' +
+            '<div class="bf-row-left">' +
+                '<div class="bf-row-title">' + xNumHtml + esc(x.t.nameOfWork) + '</div>' +
+                '<div class="bf-row-sub">' + esc(x.label) + ' · ' + fmtDate(x.date) + '</div>' +
+            '</div>' +
+            '<span class="bf-badge date-today">' + when + '</span>' +
+            dismissBtn + '</div>';
     }).join('');
 
     // Render Upcoming feed
